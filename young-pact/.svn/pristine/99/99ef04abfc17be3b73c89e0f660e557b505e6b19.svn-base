@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="FinanceAmortize">
+	<typeAlias alias="financeAmortizeDO" type="com.young.pact.domain.financeamortize.FinanceAmortizeDO" />
+	<typeAlias alias="financeAmortizeVO" type="com.young.pact.domain.financeamortize.FinanceAmortizeVO" />
+	<typeAlias alias="financeAmortizeQuery" type="com.young.pact.domain.financeamortize.FinanceAmortizeQuery" />
+	<sql id="allFields">
+        id,amortize_code,pact_code,pact_type,address,amortize_rent_time,
+		start_time,end_time,pay_amount,amortize_amount,reduce_amount,actual_amount,amortize_state,
+		cost_type,is_delete,ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		finance_amortize
+	</sql>
+	
+	<!-- 保存摊销信息 -->
+	<insert id="saveFinanceAmortize" parameterClass="financeAmortizeDO">
+	    INSERT INTO
+        <include refid="FinanceAmortize.tableName" />
+        (amortize_code,pact_code,pact_type,address,amortize_rent_time,
+        start_time,end_time,pay_amount,amortize_amount,reduce_amount,actual_amount,amortize_state,
+        cost_type,is_delete,ip,gmt_create,gmt_create_name)
+        values(#amortizeCode#,#pactCode#,#pactType#,#address#,#amortizeRentTime#,
+        #startTime#,#endTime#,#payAmount#,#amortizeAmount#,#reduceAmount#,#actualAmount#,#amortizeState#,
+        #costType#,0,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+    <!-- 查询列表个数 -->
+    <select id="countFinanceAmortize" parameterClass="financeAmortizeQuery" resultClass="int">
+        SELECT
+            COUNT(*)
+        FROM
+            `finance_amortize` amortize
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode, belonger.user_pin userPin, belonger.user_name userName, belonger.dept_code deptCode,  belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '运营管家'
+        ) belongerRent ON belongerRent.pactCode = amortize.pact_code
+        WHERE
+            amortize.is_delete = 0 AND amortize.cost_type = #costType#
+            <isNotEmpty property="amortizeState" prepend="AND">
+                amortize.amortize_state = #amortizeState#
+            </isNotEmpty>
+            <isNotEmpty property="amortizeRentTimeMin" prepend="AND">
+                <![CDATA[DATE_FORMAT(amortize.amortize_rent_time,'%Y-%m') >= DATE_FORMAT(#amortizeRentTimeMin#,'%Y-%m')]]>
+            </isNotEmpty>
+            <isNotEmpty property="amortizeRentTimeMax" prepend="AND">
+                <![CDATA[DATE_FORMAT(amortize.amortize_rent_time,'%Y-%m') <= DATE_FORMAT(#amortizeRentTimeMax#,'%Y-%m')]]>
+            </isNotEmpty>
+            <isNotEmpty property="belongDeptCode" prepend="AND">
+                belongerRent.deptCode = #belongDeptCode#
+            </isNotEmpty>
+            <dynamic prepend="AND" open="(" close=")">
+                <isNotEmpty property="keyword" prepend="OR">
+                    amortize.amortize_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    amortize.pact_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    amortize.address LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+            </dynamic>
+    </select>
+    
+    <!-- 查询列表数据 -->
+    <select id="listFinanceAmortize" parameterClass="financeAmortizeQuery" resultClass="financeAmortizeVO">
+        SELECT
+		    amortize.id,amortize.amortize_code amortizeCode,amortize.pact_code pactCode,amortize.pact_type pactType,belongerRent.deptCode belongDeptCode,belongerRent.deptName belongDeptName,
+		    amortize.address,amortize.amortize_rent_time amortizeRentTime,amortize.start_time startTime,amortize.end_time endTime,amortize.pay_amount payAmount,
+		    amortize.amortize_amount amortizeAmount,amortize.reduce_amount reduceAmount,amortize.actual_amount actualAmount,amortize.amortize_state amortizeState,amortize.cost_type costType
+		FROM
+		    `finance_amortize` amortize
+		LEFT JOIN (
+	        SELECT
+                belonger.pact_code pactCode, belonger.user_pin userPin, belonger.user_name userName, belonger.dept_code deptCode,  belonger.dept_name deptName
+	        FROM
+                pact_common_belonger belonger
+	        WHERE
+                belonger.user_role = '运营管家'
+		) belongerRent ON belongerRent.pactCode = amortize.pact_code
+		WHERE
+		    amortize.is_delete = 0 AND amortize.cost_type = #costType#
+		    <isNotEmpty property="amortizeState" prepend="AND">
+                amortize.amortize_state = #amortizeState#
+            </isNotEmpty>
+		    <isNotEmpty property="amortizeRentTimeMin" prepend="AND">
+                <![CDATA[DATE_FORMAT(amortize.amortize_rent_time,'%Y-%m') >= DATE_FORMAT(#amortizeRentTimeMin#,'%Y-%m')]]>
+            </isNotEmpty>
+            <isNotEmpty property="amortizeRentTimeMax" prepend="AND">
+                <![CDATA[DATE_FORMAT(amortize.amortize_rent_time,'%Y-%m') <= DATE_FORMAT(#amortizeRentTimeMax#,'%Y-%m')]]>
+            </isNotEmpty>
+		    <isNotEmpty property="belongDeptCode" prepend="AND">
+                belongerRent.deptCode = #belongDeptCode#
+            </isNotEmpty>
+		    <dynamic prepend="AND" open="(" close=")">
+                <isNotEmpty property="keyword" prepend="OR">
+                    amortize.amortize_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    amortize.pact_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    amortize.address LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+            </dynamic>
+        ORDER BY amortize.gmt_create DESC LIMIT #startRow#,#pageSize#
+    </select>
+</sqlMap>

@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="PactRentTransfer">
+	<typeAlias alias="PactRentTransferDO" type="com.young.pact.domain.pactrenttransfer.PactRentTransferDO" />
+	<typeAlias alias="PactRentTransferVO" type="com.young.pact.domain.pactrenttransfer.PactRentTransferVO" />
+	<typeAlias alias="PactRentTransferQuery" type="com.young.pact.domain.pactrenttransfer.PactRentTransferQuery" />
+	<sql id="allFields">
+	    id,transfer_code as transferCode,address,natives,pirmary_pact_code as pirmaryPactCode,new_pact_code as newPactCode,name,
+	    account_num as accountNum,case_bank as caseBank,open_bank as openBank,tel,transfer_reason as transferReason,
+	    remark,transfer_time as transferTime,signing_time as signingTime,state,is_delete as isDelete,ip,gmt_create as gmtCreate,
+	    gmt_create_name as gmtCteateName,gmt_modified as gmtModified , gmt_modified_name as gmtModifiedName
+    </sql>
+	<sql id="tableName">
+		pact_rent_transfer
+	</sql>
+	
+	<!-- 新增调房协议 -->
+	<insert id="insertTransfer" parameterClass="PactRentTransferDO">
+		insert into
+			<include refid="PactRentTransfer.tableName" />
+		(transfer_code,address,natives,pirmary_pact_code,new_pact_code,name,account_num,case_bank,open_bank,tel,
+		transfer_reason,remark,transfer_time,signing_time,state,is_delete,ip,gmt_create,gmt_create_name)
+		values
+		(#transferCode#,#address#,#natives#,#pirmaryPactCode#,#newPactCode#,#name#,#accountNum#,#caseBank#,#openBank#
+		,#tel#,#transferReason#,#remark#,#transferTime#,#signingTime#,#state#,#isDelete#,#ip#,now(),#createName#)
+		<selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 获取调房协议详情 -->
+	<select id="getTransfer" parameterClass="java.lang.String" resultClass="PactRentTransferVO">
+		select
+			transfer.id,
+			transfer.transfer_code as transferCode,
+			transfer.address,
+			transfer.natives,
+			transfer.pirmary_pact_code as pirmaryPactCode,
+			transfer.new_pact_code as newPactCode,
+			transfer.name,
+            transfer.account_num as accountNum,
+            transfer.case_bank as caseBank,
+            transfer.open_bank as openBank,
+            transfer.tel,
+            transfer.transfer_reason as transferReason,
+            transfer.remark,
+            transfer.transfer_time as transferTime,
+            transfer.signing_time as signingTime,
+            transfer.state,
+            transfer.gmt_create as gmtCreate,
+            transfer.gmt_create_name as gmtCteateName,
+            transfer.gmt_modified as gmtModified, 
+            transfer.gmt_modified_name as gmtModifiedName,
+            transfer.is_delete as isDelete,
+            dealBelonger.dealUserPin as dealPin,
+            dealBelonger.dealUserName as dealName
+		from
+			<include refid="PactRentTransfer.tableName" /> transfer
+			LEFT JOIN (
+                SELECT
+                    belonger.user_pin dealUserPin,
+                    belonger.user_name dealUserName,
+                    belonger.dept_name dealDeptName,
+                    belonger.dept_code dealDeptCode,
+                    belonger.pact_code
+                FROM
+                    pact_common_belonger belonger
+                WHERE
+                    belonger.user_role = '签约管家'
+            ) dealBelonger ON transfer.transfer_code = dealBelonger.pact_code
+            
+		where
+			transfer_code = #transferCode#
+		LIMIT 1   
+	</select>
+	<!-- 修改调房协议 -->
+	<update id="updateTransfer" parameterClass="PactRentTransferDO">
+		update
+			<include refid="PactRentTransfer.tableName" />
+		set
+			gmt_modified = now(),gmt_modified_name=#modifiedName#
+		<isNotNull prepend="," property="isDelete">
+            is_delete = #isDelete#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        <isNotNull prepend="," property="transferTime">
+            transfer_time = #transferTime#
+        </isNotNull>
+        <isNotNull prepend="," property="signingTime">
+            signing_time = #signingTime#
+        </isNotNull>
+        <isNotNull prepend="," property="transferReason">
+            transfer_reason = #transferReason#
+        </isNotNull>
+        <isNotNull prepend="," property="remark">
+            remark = #remark#
+        </isNotNull>
+        <isNotNull prepend="," property="name">
+            name = #name#
+        </isNotNull>
+        <isNotNull prepend="," property="accountNum">
+            account_num = #accountNum#
+        </isNotNull>
+        <isNotNull prepend="," property="caseBank">
+            case_bank = #caseBank#
+        </isNotNull>
+        <isNotNull prepend="," property="openBank">
+            open_bank = #openBank#
+        </isNotNull>
+        <isNotNull prepend="," property="tel">
+            tel = #tel#
+        </isNotNull>
+        <isNotNull prepend="," property="state">
+            state = #state#
+        </isNotNull>
+        where 
+        	transfer_code=#transferCode#
+	</update>
+	<!-- 查询调房协议列表 -->
+	<select id="listTransfer" parameterClass="PactRentTransferQuery" resultClass="PactRentTransferVO">
+		SELECT
+		    transfer.transfer_code AS transferCode,
+		    transfer.pirmary_pact_code AS pirmaryPactCode,
+		    transfer.new_pact_code AS newPactCode,
+		    room.rent_way as rentWay,
+		    transfer.natives,
+		    transfer.address,
+		    transfer.transfer_time as transferTime,
+		    transfer.signing_time as signingTime,
+		    belonger.dept_name AS deptName,
+		    belonger.user_name AS userName,
+		    transfer.gmt_create as gmtCreate,
+		    transfer.state
+		FROM
+		    pact_rent_transfer transfer
+		LEFT JOIN pact_common_belonger belonger ON transfer.transfer_code = belonger.pact_code
+		LEFT JOIN pact_rent_room room on  room.rent_pact_code = transfer.pirmary_pact_code
+		WHERE
+		    transfer.is_delete = 0 and  belonger.user_role = '维护人'
+		<isNotEmpty property="transferTimeStart" prepend="and">
+             <![CDATA[transfer.transfer_time >= ]]>#transferTimeStart#
+        </isNotEmpty>
+        <isNotEmpty property="transferTimeEnd" prepend="and">
+             <![CDATA[transfer.transfer_time < ]]>#transferTimeEnd#
+        </isNotEmpty>
+        <isNotEmpty property="signingTimeStart" prepend="and">
+             <![CDATA[transfer.signing_time >= ]]>#signingTimeStart#
+        </isNotEmpty>
+        <isNotEmpty property="signingTimeEnd" prepend="and">
+             <![CDATA[transfer.signing_time < ]]>#signingTimeEnd#
+        </isNotEmpty>
+        <isNotEmpty property="deptCode" prepend="and">
+            belonger.dept_code = #deptCode#
+        </isNotEmpty>
+        <isNotEmpty property="natives" prepend="and">
+            transfer.natives=#natives#
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend="and">
+            transfer.state=#state#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="and">
+             (
+                transfer.transfer_code like
+                concat('%',#keyword#,'%') or
+                transfer.address like concat('%',#keyword#,'%') or
+                transfer.pirmary_pact_code like concat('%',#keyword#,'%') or 
+                transfer.new_pact_code like concat('%',#keyword#,'%')
+              )
+        </isNotEmpty>
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+        ORDER BY transfer.transfer_time DESC,transfer.signing_time DESC,transfer.gmt_create DESC LIMIT #startRow#,#pageSize#
+			
+	</select>
+	<!-- 查询调房协议列表数量 -->
+	<select id="countTransfer" parameterClass="PactRentTransferQuery" resultClass="java.lang.Integer">
+		SELECT
+		    count(transfer.id)
+		FROM
+		    pact_rent_transfer transfer
+		LEFT JOIN pact_common_belonger belonger ON transfer.transfer_code = belonger.pact_code
+		LEFT JOIN pact_rent_room room on  room.rent_pact_code = transfer.pirmary_pact_code
+		WHERE
+		    transfer.is_delete = 0 and  belonger.user_role = '维护人'
+		<isNotEmpty property="transferTimeStart" prepend="and">
+             <![CDATA[transfer.transfer_time >= ]]>#transferTimeStart#
+        </isNotEmpty>
+        <isNotEmpty property="transferTimeEnd" prepend="and">
+             <![CDATA[transfer.transfer_time < ]]>#transferTimeEnd#
+        </isNotEmpty>
+        <isNotEmpty property="signingTimeStart" prepend="and">
+             <![CDATA[transfer.signing_time >= ]]>#signingTimeStart#
+        </isNotEmpty>
+        <isNotEmpty property="signingTimeEnd" prepend="and">
+             <![CDATA[transfer.signing_time < ]]>#signingTimeEnd#
+        </isNotEmpty>
+        <isNotEmpty property="deptCode" prepend="and">
+            belonger.dept_code = #deptCode#
+        </isNotEmpty>
+        <isNotEmpty property="natives" prepend="and">
+            transfer.natives=#natives#
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend="and">
+            transfer.state=#state#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="and">
+             (
+                transfer.transfer_code like
+                concat('%',#keyword#,'%') or
+                transfer.address like concat('%',#keyword#,'%') or
+                transfer.pirmary_pact_code like concat('%',#keyword#,'%') or 
+                transfer.new_pact_code like concat('%',#keyword#,'%')
+              )
+        </isNotEmpty>
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+	</select>
+	<!-- 查询登录人有没有权限查看详情 -->
+    <select id="getPermissions" parameterClass="PactRentTransferQuery" resultClass="PactRentTransferVO">
+        SELECT
+            transfer.transfer_code AS transferCode
+        FROM
+            pact_rent_transfer transfer
+        LEFT JOIN pact_common_belonger belonger ON transfer.transfer_code = belonger.pact_code
+        WHERE
+            transfer.is_delete = 0 and  belonger.user_role = '维护人'
+            and  transfer.transfer_code = #transferCode#
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+    </select>
+	<!--    条件查询托出合同调房协议集合 -->
+	<select id="listTransferByParam" parameterClass="PactRentTransferQuery" resultClass="PactRentTransferVO">
+	    SELECT 
+           transfer.transfer_code transferCode,
+           guardianBelonger.userPin guardianPin
+        from 
+        pact_rent_transfer transfer
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        )guardianBelonger ON transfer.transfer_code = guardianBelonger.pactCode 
+        where transfer.is_delete = 0 
+        <isNotEmpty property="state" prepend="and">
+            transfer.state = #state# 
+        </isNotEmpty>
+	</select>
+	<!--    查询录入托出合同调房协议超过24小时未提交审核的托出合同调房协议 -->
+	<select id="listUnsubmitted" parameterClass="PactRentTransferQuery" resultClass="PactRentTransferVO">
+	    SELECT 
+           transfer.transfer_code transferCode,
+           guardianBelonger.userPin guardianPin
+        from 
+        pact_rent_transfer transfer
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        )guardianBelonger ON transfer.transfer_code = guardianBelonger.pactCode 
+        where transfer.is_delete = 0 and transfer.state = #state# 
+        AND TIMESTAMPDIFF(HOUR, transfer.gmt_create, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, transfer.gmt_create, NOW())  <![CDATA[ < ]]> 48 
+	</select>
+	<!--    查询托出合同调房协议提交审核后超过24小时没有审核通过或驳回的托出合同调房协议-->
+	<select id="listUnReview" parameterClass="PactRentTransferQuery" resultClass="PactRentTransferVO">
+	    SELECT 
+           transfer.transfer_code transferCode,
+           guardianBelonger.userPin guardianPin
+        from 
+        pact_rent_transfer transfer
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        )guardianBelonger ON transfer.transfer_code = guardianBelonger.pactCode 
+        where transfer.is_delete = 0 and transfer.state = #state# 
+        AND TIMESTAMPDIFF(HOUR, transfer.gmt_modified, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, transfer.gmt_modified, NOW())  <![CDATA[ < ]]> 48 
+	</select>
+</sqlMap> 

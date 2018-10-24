@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+    http://www.springframework.org/schema/beans        
+    http://www.springframework.org/schema/beans/spring-beans.xsd        
+    http://code.alibabatech.com/schema/dubbo        
+    http://code.alibabatech.com/schema/dubbo/dubbo.xsd"
+    xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    default-autowire="byName">
+    <dubbo:application name="pact-rpc-server" />
+    
+    <!-- zk注册中心 -->
+    <dubbo:registry address="${dubbo.provider.registry.address}" />
+    
+    <!-- 暴露端口号 dubbo -->
+    <dubbo:protocol id="pactProtocol" name="dubbo" port="${dubbo.provider.port}" />
+    
+    <!-- 托进房源信息 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.purchasehouse.PurchaseHouseRestService" 
+                    ref="purchaseHouseRestService" version="1.0" group="group-purchasehouse"
+                    protocol="pactProtocol" />
+    <!-- 托进业主信息 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.purchasehouse.PurchaseHouseOwnerRestService" 
+                    ref="purchaseHouseOwnerRestService" version="1.0" group="group-purchasehouse"
+                    protocol="pactProtocol" />
+    <!-- 托进合同信息 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.purchasebase.PurchaseBaseRestService" 
+                    ref="purchaseBaseRestService" version="1.0" group="group-purchasebase"
+                    protocol="pactProtocol" />
+    <!-- 托进物业交接 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.propertytransfer.PropertyTransferRestService" 
+                    ref="propertyTransferRestService" version="1.0" group="group-property"
+                    protocol="pactProtocol" />
+    <!-- 托出房间 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.rentroom.RentRoomService" 
+                    ref="rentRoomService" version="1.0" group="group-rentroom"
+                    protocol="pactProtocol" />  
+    <!-- 托出租客-->
+    <dubbo:service interface="com.young.pact.api.service.rest.rentcustomer.RentCustomerService" 
+                    ref="rentCustomerService" version="1.0" group="group-rentCustomer"
+                    protocol="pactProtocol" /> 
+    <!-- 托出合同 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.rentbase.RentBaseService" 
+                    ref="rentBaseService" version="1.0" group="group-rentbase"
+                    protocol="pactProtocol" />  
+    <!-- 托出物业交接 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.commonmeterread.MeterGoodsService" 
+                    ref="meterGoodsService" version="1.0" group="group-rentmeterGoods"
+                    protocol="pactProtocol" />  
+    <!-- 合同责任人 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.commonbelonger.CommonBelongerRestService" 
+                    ref="commonBelongerRestService" version="1.0" group="group-commonBelonger"
+                    protocol="pactProtocol" />  
+    <!-- 转租协议 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.rentturn.RentTurnService" 
+                    ref="rentTurnService" version="1.0" group="group-rentTurn"
+                    protocol="pactProtocol" />       
+    <!-- 托进合同免租期 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.purchaserentfree.PurchaseRentfreeRestService" 
+                    ref="purchaseRentfreeRestService" version="1.0" group="group-purchaserentfree"
+                    protocol="pactProtocol" />  
+    <!-- 拖进合同解约协议 -->          
+    <dubbo:service interface="com.young.pact.api.service.rest.purchasetermination.PurchaseTerminationRestService" 
+                    ref="purchaseTerminationRestService" version="1.0" group="group-purchasetermination"
+                    protocol="pactProtocol" />
+    <!-- 合同收支 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.financereceiptpay.FinanceReceiptPayRestService" 
+                    ref="financeReceiptPayRestService" version="1.0" group="group-financereceiptpay"
+                    protocol="pactProtocol" />  
+    <!-- 摊销 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.financeamortize.FinanceAmortizeRestService" 
+                    ref="financeAmortizeRestService" version="1.0" group="group-financeamortize"
+                    protocol="pactProtocol" />  
+    <!-- 托进合同 rpc -->
+    <dubbo:service interface="com.young.pact.api.service.rpc.purchasebase.PurchaseBaseRpcService" 
+                    ref="purchaseBaseRpcService" version="1.0" group="group-purchasebase"
+                    protocol="pactProtocol" />  
+    <!-- 合同责任人rpc -->
+    <dubbo:service interface="com.young.pact.api.service.rpc.commonbelonger.CommonBelongerRpcService" 
+                    ref="commonBelongerRpcService" version="1.0" group="group-commonbelonger"
+                    protocol="pactProtocol" />  
+    <!-- 续租协议 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.rentcontinued.RentContinuedService" 
+                    ref="rentContinuedService" version="1.0" group="group-rentcontinued"
+                    protocol="pactProtocol" />  
+    <!-- 申报 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.declare.DeclareService" 
+                    ref="declareService" version="1.0" group="group-declare"
+                    protocol="pactProtocol" />  
+    <!-- 调房协议 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.pactrenttransfer.PactRentTransferRestService" 
+                    ref="pactRentTransferService" version="1.0" group="group-transfer"
+                    protocol="pactProtocol" />
+    <!-- 拖出解约协议 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.pactrenttermination.PactRentTerminationService" 
+                    ref="pactRentTerminationService" version="1.0" group="group-termination"
+                    protocol="pactProtocol" />
+    <!-- 物品 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.commongoods.CommonGoodsService" 
+                    ref="commonGoodsService" version="1.0" group="group-goods"
+                    protocol="pactProtocol" />
+    <!-- 交易记录 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.commontradingrecord.CommonTradingRecordService" 
+                    ref="commonTradingRecordService" version="1.0" group="group-tradingrecord"
+                    protocol="pactProtocol" />
+    <!-- 资源转移 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.common.ResourceTransferService" 
+                    ref="resourceTransferService" version="1.0" group="group-resourceTransfer"
+                    protocol="pactProtocol" />
+    <!-- 客源 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.customer.CustomerService" 
+                    ref="customerService" version="1.0" group="group-customer"
+                    protocol="pactProtocol" />
+    <!-- 青春界各部门下银行账号 -->
+    <dubbo:service interface="com.young.pact.api.service.rest.common.BankAccountService" 
+                    ref="bankAccountService" version="1.0" group="group-bankaccount"
+                    protocol="pactProtocol" />
+    <!-- 托进申报rpc -->
+    <dubbo:service interface="com.young.pact.api.service.rpc.declare.DeclareRpcService" 
+                    ref="declareRpcService" version="1.0" group="group-declarerpc"
+                    protocol="pactProtocol" />
+    <!-- 托出合同rpc -->
+    <dubbo:service interface="com.young.pact.api.service.rpc.rentbase.RentBaseRpcService" 
+                    ref="rentBaseRpcService" version="1.0" group="group-rentrpc"
+                    protocol="pactProtocol" />
+    <!-- 首页统计rpc -->
+    <dubbo:service interface="com.young.pact.api.service.rpc.statistics.StatisticsRpcService" 
+                    ref="statisticsRpcService" version="1.0" group="group-statisticsrpc"
+                    protocol="pactProtocol" />
+                    
+</beans>

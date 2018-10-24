@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>com.young</groupId>
+		<artifactId>young-parent</artifactId>
+		<version>1.0.0</version>
+	</parent>
+	<artifactId>young-pact</artifactId>
+	<packaging>pom</packaging>
+	
+	<dependencies>
+        <dependency>
+            <groupId>com.young</groupId>
+            <artifactId>young-common</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+    </dependencies>
+	
+	<modules>
+		<module>young-pact-api</module>
+		<module>young-pact-common</module>
+		<module>young-pact-controller</module>
+		<module>young-pact-dao</module>
+		<module>young-pact-domain</module>
+		<module>young-pact-manager</module>
+		<module>young-pact-service</module>
+        <module>young-pact-work</module>
+  </modules>
+</project>

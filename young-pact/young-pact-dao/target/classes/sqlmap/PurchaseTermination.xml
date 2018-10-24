@@ -1,0 +1,397 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="PurchaseTermination">
+	<typeAlias alias="purchaseTerminationDO" type="com.young.pact.domain.purchasetermination.PurchaseTerminationDO" />
+	<typeAlias alias="purchaseTerminationQuery" type="com.young.pact.domain.purchasetermination.PurchaseTerminationQuery" />
+	<typeAlias alias="purchaseTerminationVO" type="com.young.pact.domain.purchasetermination.PurchaseTerminationVO" />
+	<typeAlias alias="purchaseTerminationBaseVO" type="com.young.pact.domain.purchasetermination.PurchaseTerminationBaseVO" />
+	<typeAlias alias="purchaseTerminationEditVO" type="com.young.pact.domain.purchasetermination.PurchaseTerminationEditVO" />
+	
+	<sql id="allFields">
+	   id,termination_code,address,purchase_code,belonging,reason,remark,termination_date,pact_end_date,
+	   type,state,is_delete,ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		pact_purchase_termination
+	</sql>
+	
+	
+	<!-- 根据合同编码查询解约协议个数 -->
+	<select id="countByPurchaseCode" parameterClass="java.lang.String" resultClass="int">
+	    SELECT
+		    COUNT(*)
+		FROM
+		    <include refid="PurchaseTermination.tableName" />
+		WHERE
+		    purchase_code = #purchaseCode# AND is_delete = 0
+	</select>
+	
+	<!-- 保存托进合同解约协议 -->
+    <insert id="savePurchaseTermination" parameterClass="purchaseTerminationDO">
+        INSERT INTO
+        <include refid="PurchaseTermination.tableName" />
+        (
+        termination_code,address,purchase_code,belonging,reason,remark,termination_date,pact_end_date,
+        type,state,is_delete,ip,gmt_create,gmt_create_name
+        )
+        VALUES
+        (
+        #terminationCode#,#address#,#purchaseCode#,#belonging#,#reason#,#remark#,#terminationDate#,
+        #pactEndDate#,#type#,1,0,#ip#,NOW(),#createName#
+        )
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+    </insert>
+	
+	<!-- 查询解约协议总数 -->
+	<select id="countPurchaseTermination" parameterClass="purchaseTerminationQuery" resultClass="int">
+	    SELECT COUNT(termination.id)
+	    FROM <include refid="PurchaseTermination.tableName" /> termination
+	    LEFT JOIN pact_common_belonger belonger
+	    ON termination.termination_code = belonger.pact_code 
+	    
+	    WHERE
+	         belonger.user_role = '维护人' AND termination.is_delete = 0
+	        <isNotEmpty property="type" prepend="AND">
+               termination.type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="state" prepend="AND">
+               termination.state = #state#
+            </isNotEmpty>
+            <isNotEmpty property="deptCode" prepend="AND">
+               belonger.dept_code = #deptCode#
+            </isNotEmpty>
+            <isNotEmpty property="pactEndDateMin" prepend="AND">
+               termination.pact_end_date &gt;= #pactEndDateMin#
+            </isNotEmpty>
+            <isNotEmpty property="pactEndDateMax" prepend="AND">
+               termination.pact_end_date &lt;= #pactEndDateMax#
+            </isNotEmpty>
+            <isNotEmpty property="terminationDateMin" prepend="AND">
+               termination.termination_date &gt;= #terminationDateMin#
+            </isNotEmpty>
+            <isNotEmpty property="terminationDateMax" prepend="AND">
+               termination.termination_date &lt;= #terminationDateMax#
+            </isNotEmpty>
+            <isNotEmpty property="keyWords" prepend="AND">
+               (termination.termination_code like concat('%',#keyWords#,'%') 
+                or termination.address like concat('%',#keyWords#,'%') 
+                or termination.purchase_code like concat('%',#keyWords#,'%'))
+            </isNotEmpty>
+            <!-- 数据权限 -->
+            <isNotEmpty property="scope" >
+                 <!--  本人 -->
+                 <isEqual property="scope" compareValue="1" prepend="and">
+                           belonger.user_pin=#userPin#
+                 </isEqual>
+                 <!--  本部门 -->
+                 <isEqual property="scope" compareValue="2" prepend="and">
+                          belonger.dept_code in 
+                         <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                        </iterate>
+                 </isEqual>
+                 <!--  本人及下属 -->
+                 <isEqual property="scope" compareValue="3" prepend="and">
+                        belonger.user_pin in
+                        <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                        </iterate>
+                 </isEqual>
+                  <!--  本部门及下属部门 -->
+                 <isEqual property="scope" compareValue="4" prepend="and">
+                        belonger.dept_code in
+                        <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                        </iterate>
+                 </isEqual>
+            </isNotEmpty>
+	</select>
+	
+	<!-- 查询解约协议列表 -->
+	<select id="listPurchaseTermination" parameterClass="purchaseTerminationQuery" resultClass="purchaseTerminationVO">
+        SELECT 
+            termination.termination_code terminationCode,termination.purchase_code purchaseCode,termination.address,
+            termination.type,termination.pact_end_date pactEndDate,termination.termination_date terminationDate,
+            belonger.user_name userName,belonger.dept_name deptName,termination.gmt_create 'create',termination.state
+        FROM <include refid="PurchaseTermination.tableName" /> termination
+        LEFT JOIN pact_common_belonger belonger
+        ON termination.termination_code = belonger.pact_code 
+        WHERE
+            belonger.user_role = '维护人' AND termination.is_delete = 0
+            <isNotEmpty property="type" prepend="AND">
+               termination.type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="state" prepend="AND">
+               termination.state = #state#
+            </isNotEmpty>
+            <isNotEmpty property="deptCode" prepend="AND">
+               belonger.dept_code = #deptCode#
+            </isNotEmpty>
+            <isNotEmpty property="pactEndDateMin" prepend="AND">
+               termination.pact_end_date &gt;= #pactEndDateMin#
+            </isNotEmpty>
+            <isNotEmpty property="pactEndDateMax" prepend="AND">
+               termination.pact_end_date &lt;= #pactEndDateMax#
+            </isNotEmpty>
+            <isNotEmpty property="terminationDateMin" prepend="AND">
+               termination.termination_date &gt;= #terminationDateMin#
+            </isNotEmpty>
+            <isNotEmpty property="terminationDateMax" prepend="AND">
+               termination.termination_date &lt;= #terminationDateMax#
+            </isNotEmpty>
+            <isNotEmpty property="keyWords" prepend="AND">
+               (termination.termination_code like concat('%',#keyWords#,'%') 
+                or termination.address like concat('%',#keyWords#,'%') 
+                or termination.purchase_code like concat('%',#keyWords#,'%'))
+            </isNotEmpty>
+            <isNotEmpty property="scope" >
+                 <!--  本人 -->
+                 <isEqual property="scope" compareValue="1" prepend="and">
+                           belonger.user_pin=#userPin#
+                 </isEqual>
+                 <!--  本部门 -->
+                 <isEqual property="scope" compareValue="2" prepend="and">
+                         belonger.dept_code in 
+                         <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                        </iterate>
+                 </isEqual>
+                 <!--  本人及下属 -->
+                 <isEqual property="scope" compareValue="3" prepend="and">
+                        belonger.user_pin in
+                        <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                        </iterate>
+                 </isEqual>
+                  <!--  本部门及下属部门 -->
+                 <isEqual property="scope" compareValue="4" prepend="and">
+                        belonger.dept_code in
+                        <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                        </iterate>
+                 </isEqual>
+            </isNotEmpty>
+        ORDER BY termination.gmt_create DESC LIMIT #startRow#,#pageSize#
+    </select>
+<!-- 	查看登录人有没有这个托进合同解约协议的权限  -->
+	<select id="getPermissions" parameterClass="purchaseTerminationQuery" resultClass="purchaseTerminationBaseVO">
+	   SELECT 
+            termination.termination_code terminationCode,termination.purchase_code purchaseCode,termination.address,
+            termination.type,termination.pact_end_date pactEndDate,termination.termination_date terminationDate,
+            belonger.user_name userName,belonger.dept_name deptName,termination.gmt_create 'create',termination.state
+        FROM <include refid="PurchaseTermination.tableName" /> termination
+        LEFT JOIN pact_common_belonger belonger
+        ON termination.termination_code = belonger.pact_code 
+        WHERE
+            belonger.user_role = '维护人' AND termination.is_delete = 0
+            AND termination.termination_code = #terminationCode# 
+            <isNotEmpty property="scope" >
+                 <!--  本人 -->
+                 <isEqual property="scope" compareValue="1" prepend="and">
+                           belonger.user_pin=#userPin#
+                 </isEqual>
+                 <!--  本部门 -->
+                 <isEqual property="scope" compareValue="2" prepend="and">
+                         belonger.dept_code=#deptCode#
+                 </isEqual>
+                 <!--  本人及下属 -->
+                 <isEqual property="scope" compareValue="3" prepend="and">
+                        belonger.user_pin in
+                        <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                        </iterate>
+                 </isEqual>
+                  <!--  本部门及下属部门 -->
+                 <isEqual property="scope" compareValue="4" prepend="and">
+                        belonger.dept_code in
+                        <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                        </iterate>
+                 </isEqual>
+            </isNotEmpty>
+       LIMIT 1   
+	</select>
+	<!-- 根据查询条件查询托进合同解约协议集合 -->
+	<select id="listPurTerminationByParam" parameterClass="purchaseTerminationQuery" resultClass="purchaseTerminationVO">
+	    SELECT 
+	        termination.termination_code terminationCode,termination.type,termination.pact_end_date pactEndDate,
+	        termination.termination_date terminationDate,termination.state,termination.reason,
+	        termination.gmt_create 'create',termination.gmt_modified modified,guardianBelonger.userPin  guardianPin
+        from 
+        <include refid="PurchaseTermination.tableName" /> termination
+         LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        ) guardianBelonger ON guardianBelonger.pactCode = termination.termination_code
+        where termination.is_delete = 0 
+        <isNotEmpty property="state" prepend="and">
+            termination.state = #state# 
+        </isNotEmpty>
+	</select>
+    <!-- 查询录入托进解约协议超过24小时未提交审核的托进解约协议集合 -->
+    <select id="listUnsubmitted" parameterClass="purchaseTerminationQuery" resultClass="purchaseTerminationVO">
+        SELECT 
+            termination.termination_code terminationCode,
+            guardianBelonger.userPin guardianPin
+        from 
+        <include refid="PurchaseTermination.tableName" /> termination
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        ) guardianBelonger ON guardianBelonger.pactCode = termination.termination_code
+        where termination.is_delete = 0 and termination.state = #state# 
+        AND TIMESTAMPDIFF(HOUR, termination.gmt_create, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, termination.gmt_create, NOW())  <![CDATA[ < ]]> 48 
+    </select>
+    <!-- 查询托进解约协议提交审核后超过24小时没有审核通过或驳回的托进解约协议集合 -->
+    <select id="listUnReview" parameterClass="purchaseTerminationQuery" resultClass="purchaseTerminationVO">
+        SELECT 
+            termination.termination_code terminationCode,
+            guardianBelonger.userPin guardianPin
+        from 
+        <include refid="PurchaseTermination.tableName" /> termination
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        ) guardianBelonger ON guardianBelonger.pactCode = termination.termination_code
+        where termination.is_delete = 0 and termination.state = #state# 
+        AND TIMESTAMPDIFF(HOUR, termination.gmt_modified, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, termination.gmt_modified, NOW())  <![CDATA[ < ]]> 48 
+    </select>
+	<!-- 查询解约协议基本信息 -->
+	<select id="getPurchaseTerminationBase" parameterClass="java.lang.String" resultClass="purchaseTerminationBaseVO">
+	SELECT 
+	    termination.termination_code terminationCode,termination.type,termination.pact_end_date pactEndDate,
+	    termination.termination_date terminationDate,belonger.user_name userName,termination.gmt_create 'create',
+	    termination.state,termination.reason,termination.remark TerminationRemark,termination.belonging TerminationBelonging,
+	    purchase.purchase_code purchaseCode,purchase.paper_number paperNumber,pactdeclare.house_code houseCode,purchase.entrust_start entrustStart,
+	    purchase.entrust_end entrustEnd,purchase.entrust_period entrustPeriod,purchase.house_date houseDate,
+	    purchase.deal_date dealDate,purchase.pay_way payWay,purchase.hosting_price hostingPrice,purchase.deposit,
+	    purchase.belonging PurchaseBelonging,purchase.remark purchaseRemark
+	FROM <include refid="PurchaseTermination.tableName" /> termination
+	LEFT JOIN pact_common_belonger belonger
+	ON termination.termination_code = belonger.pact_code 
+	LEFT JOIN pact_purchase_base purchase
+    ON termination.purchase_code = purchase.purchase_code
+	LEFT JOIN pact_declare pactdeclare
+	ON purchase.declare_code = pactdeclare.declare_code
+	WHERE termination.termination_code = #terminationCode# 
+	AND termination.is_delete = 0 
+	AND belonger.user_role = '签约管家'
+	LIMIT 1
+	</select>
+	
+	<!-- 查询拖进合同解约协议编辑页信息 -->
+    <select id="getPurchaseTerminationEdit" parameterClass="java.lang.String" resultClass="purchaseTerminationEditVO">
+    SELECT 
+        termination.address,termination.type,belonger.user_pin userPin,belonger.user_name userName,termination.pact_end_date pactEndDate,
+        termination.belonging,termination.reason,termination.termination_date terminationDate,termination.remark,
+        termination.termination_code terminationCode
+    FROM <include refid="PurchaseTermination.tableName" /> termination
+    LEFT JOIN pact_common_belonger belonger
+    ON termination.termination_code = belonger.pact_code 
+    WHERE termination.termination_code = #terminationCode# 
+    AND termination.is_delete = 0 
+    AND belonger.user_role = '签约管家'
+    LIMIT 1
+    </select>
+    
+    <!-- 查询拖进合同解约协议信息 -->
+    <select id="getPurchaseTermination" parameterClass="java.lang.String" resultClass="purchaseTerminationVO">
+    SELECT 
+        termination_code terminationCode,purchase_code purchaseCode,address,type,pact_end_date pactEndDate,
+        termination_date terminationDate,state
+    FROM <include refid="PurchaseTermination.tableName" />
+    WHERE termination_code = #terminationCode# 
+    AND is_delete = 0
+    LIMIT 1
+    </select>
+    
+    <!-- 修改拖进合同解约协议 -->
+    <update id="updatePurchaseTermination" parameterClass="purchaseTerminationDO">
+        UPDATE
+            <include refid="PurchaseTermination.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="pactEndDate">
+            pact_end_date = #pactEndDate#
+        </isNotNull>
+        <isNotNull prepend="," property="belonging">
+            belonging = #belonging#
+        </isNotNull>
+        <isNotNull prepend="," property="reason">
+            reason = #reason#
+        </isNotNull>
+        <isNotNull prepend="," property="terminationDate">
+            termination_date = #terminationDate#
+        </isNotNull>
+        <isNotNull prepend="," property="remark">
+            remark = #remark#
+        </isNotNull>
+        WHERE termination_code = #terminationCode# AND (state = 1 OR state = 4) AND is_delete = 0 
+    </update>
+    
+    <!-- 逻辑删除拖进合同解约协议 -->
+    <update id="removePurchaseTermination" parameterClass="purchaseTerminationDO">
+        UPDATE
+            <include refid="PurchaseTermination.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="isDelete">
+            is_delete = #isDelete#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE termination_code = #terminationCode#
+    </update>
+    
+    <!-- 修改协议审核状态 -->
+    <update id="updateState" parameterClass="purchaseTerminationDO">
+        UPDATE
+            <include refid="PurchaseTermination.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="state">
+            state = #state#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE termination_code = #terminationCode#
+        <isEqual property="state" compareValue="2" prepend="AND">
+            (state = 1 OR state = 4)
+        </isEqual>
+        <isEqual property="state" compareValue="3" prepend="AND">
+            state = 2
+        </isEqual>
+        <isEqual property="state" compareValue="4" prepend="AND">
+            state = 2
+        </isEqual>
+    </update>
+</sqlMap>

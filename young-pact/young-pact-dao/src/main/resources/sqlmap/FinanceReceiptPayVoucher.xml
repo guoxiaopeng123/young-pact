@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="FinanceReceiptPayVoucher">
+	<typeAlias alias="financeReceiptPayVoucherDO" type="com.young.pact.domain.financereceiptpay.FinanceReceiptPayVoucherDO" />
+	<sql id="allFields">
+	    id,receipt_pay_id,url,sort,ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		finance_receipt_pay_voucher
+	</sql>
+	
+	<!-- 根据实收、实支 id集合查询凭证集合 -->
+	<select id="listVoucherByPids" parameterClass="java.util.List" resultClass="financeReceiptPayVoucherDO">
+	    SELECT
+		    id,receipt_pay_id receiptPayId,url,sort,gmt_create `create`,gmt_create_name createName
+		FROM
+		    <include refid="FinanceReceiptPayVoucher.tableName" />
+		WHERE
+		    receipt_pay_id IN
+		    <iterate open="(" close=")" conjunction=",">
+                #[]#
+            </iterate>
+	</select>
+	
+	<!-- 插入收支凭证 -->
+	<insert id="saveFinanceReceiptPayVoucher" parameterClass="financeReceiptPayVoucherDO">
+	    INSERT INTO
+        <include refid="FinanceReceiptPayVoucher.tableName" />
+        (receipt_pay_id,url,sort,ip,gmt_create,gmt_create_name)
+        values(#receiptPayId#,#url#,#sort#,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 修改收支凭证 -->
+	<update id="updateFinanceReceiptPayVoucher" parameterClass="financeReceiptPayVoucherDO">
+	    UPDATE
+            <include refid="FinanceReceiptPayVoucher.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="url">url = #url#</isNotNull>
+        <isNotNull prepend="," property="sort">sort = #sort#</isNotNull>
+        <isNotNull prepend="," property="ip">ip = #ip#</isNotNull>
+        WHERE id = #id# AND receipt_pay_id = #receiptPayId#
+	</update>
+	
+	<!-- 删除 不包含凭证集合数据 的凭证！！ -->
+	<delete id="removeVouchersByPid" parameterClass="java.util.Map">
+	    DELETE FROM <include refid="FinanceReceiptPayVoucher.tableName" />
+        WHERE
+           id IN (
+                SELECT p3.id FROM
+                (
+                    SELECT p1.id FROM
+                        <include refid="FinanceReceiptPayVoucher.tableName" /> p1
+                    WHERE
+                        p1.receipt_pay_id = #receiptPayId#
+                    AND NOT EXISTS (
+                        SELECT
+                            p2.id
+                        FROM
+                            <include refid="FinanceReceiptPayVoucher.tableName" /> p2
+                        WHERE
+                            p1.id = p2.id AND p2.receipt_pay_id = #receiptPayId#
+                        AND p2.id IN 
+                        <isNotEmpty property="voucherList">
+                            <iterate open="(" close=")" conjunction="," property="voucherList">
+                                #voucherList[].id#
+                            </iterate>
+                        </isNotEmpty>
+                        <isEmpty property="voucherList">
+                           (0)
+                        </isEmpty>
+                    )
+                ) p3
+           )
+	</delete>
+</sqlMap>

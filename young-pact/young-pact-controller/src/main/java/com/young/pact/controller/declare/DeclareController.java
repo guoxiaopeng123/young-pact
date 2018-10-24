@@ -1,0 +1,193 @@
+package com.young.pact.controller.declare;
+
+import javax.servlet.http.HttpServletRequest;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.tools.common.springmvc.base.BaseController;
+import com.tools.common.util.string.StringUtil;
+import com.young.common.annotation.PermissionsCode;
+import com.young.common.domain.ApiResult;
+import com.young.common.page.PageBean;
+import com.young.pact.api.domain.param.rest.declare.DeclareParam;
+import com.young.pact.api.domain.result.rest.declare.DeclareResult;
+import com.young.pact.api.service.rest.declare.DeclareService;
+import com.young.pact.common.constant.LoginConsts;
+
+/**
+ * @描述 :  申报
+ * @author : GuoXiaoPeng
+ * @创建时间 : 2018年8月13日 下午9:30:20
+ */
+@RestController()
+@RequestMapping("/declare")
+public class DeclareController extends BaseController {
+    private static Log LOG = LogFactory.getLog(DeclareController.class);
+    private DeclareService declareService;
+    private MathCalculator mathCalculator;
+    /**
+     * @Title: saveDeclare
+     * @Description: TODO( 保存申报)
+     * @author GuoXiaoPeng
+     * @param declareParam 申报信息
+     * @return 返回结果
+     * @throws 异常
+      */
+     @PermissionsCode(code = "rest_declare_save")
+     @RequestMapping(value = "/saveDeclare", method = RequestMethod.POST)
+     ApiResult<String> saveDeclare(HttpServletRequest request, @RequestBody DeclareParam param) {
+         ApiResult<String> result = new ApiResult<>();
+         try {
+             if(null!=param){
+                 String pin = (String) request.getAttribute(LoginConsts.PIN);
+                 String ip =super.getRemoteIPs(request);
+                 param.setCreateName(pin);
+                 param.setIp(ip);
+             }
+             result = declareService.saveDeclare(param);
+         } catch (Exception e) {
+             LOG.error(e.getMessage(), e);
+         }
+         return result;
+     }
+     /**
+     * @Title: listDeclare
+     * @Description: TODO( 分页查询申报列表 )
+     * @author GuoXiaoPeng
+     * @param declareParam 申报查询条件
+     * @return 返回结果
+     * @throws 异常
+      */
+     @PermissionsCode(code = "rest_declare_page")
+     @RequestMapping(value = "/listDeclare", method = RequestMethod.POST)
+     ApiResult<PageBean<DeclareResult>> listDeclare(HttpServletRequest request, @RequestBody DeclareParam param){
+         ApiResult<PageBean<DeclareResult>> result = new ApiResult<>();
+         try {
+             if(null!=param){
+               String pin = (String) request.getAttribute(LoginConsts.PIN);
+               String ip =super.getRemoteIPs(request);
+               Integer scope = (Integer) request.getAttribute(LoginConsts.SCOPE);
+               param.setCreateName(pin);
+               param.setIp(ip);
+               param.setScope(scope);
+             }
+             int a = 10/0;
+             result = declareService.listDeclare(param);
+         } catch (Exception e) {
+             LOG.error(e.getMessage(), e);
+         }
+         return result;
+     }
+     /**
+     * @Title: getDeclareByDeclareCode
+     * @Description: TODO( 根据申报编码查询申报详情 )
+     * @author GuoXiaoPeng
+     * @param declareCode 申报编码
+     * @return 返回结果
+     * @throws 异常
+      */
+     @PermissionsCode(code = "rest_declare_detail")
+     @RequestMapping(value = "/getDeclareByDeclareCode/{declareCode}", method = RequestMethod.GET)
+     ApiResult<DeclareResult>  getDeclareByDeclareCode(HttpServletRequest request,@PathVariable String declareCode){
+         ApiResult<DeclareResult> result = new ApiResult<>();
+         try {
+             if(StringUtil.isNotBlank(declareCode)){
+                 result = declareService.getDeclareByDeclareCode(declareCode);
+             }
+         } catch (Exception e) {
+             LOG.error(e.getMessage(), e);
+         }
+         return result;
+         
+     }
+     /**
+     * @Title: reviewPassRentTurn
+     * @Description: TODO( 审核通过申报 )
+     * @author GuoXiaoPeng
+     * @param param 申报信息
+     * @return 返回结果
+     * @throws 异常
+      */
+     @PermissionsCode(code = "rest_declare_pass")
+     @RequestMapping(value = "/reviewPassDeclare", method = RequestMethod.POST)
+     ApiResult<Boolean> reviewPassDeclare(HttpServletRequest request,@RequestBody DeclareParam param) {
+         ApiResult<Boolean> result = new ApiResult<>();
+         try {
+             if(null!=param){
+                 String pin = (String) request.getAttribute(LoginConsts.PIN);
+                 String ip =super.getRemoteIPs(request);
+                 param.setIp(ip);
+                 param.setModifiedName(pin);
+             }
+             result = declareService.reviewPassDeclare(param);
+         } catch (Exception e) {
+             LOG.error(e.getMessage(), e);
+         }
+         return result;
+     }
+     /**
+     * @Title: reviewDismissalRentTurn
+     * @Description: TODO(审核驳回申报)
+     * @author GuoXiaoPeng
+     * @param param  申报信息
+     * @return 返回结果
+     * @throws 异常
+      */
+     @PermissionsCode(code = "rest_declare_reject")
+     @RequestMapping(value = "/reviewDismissalDeclare", method = RequestMethod.POST)
+     ApiResult<Boolean> reviewDismissalDeclare(HttpServletRequest request,@RequestBody DeclareParam param) {
+         ApiResult<Boolean> result = new ApiResult<>();
+         try {
+             if(null!=param){
+                 String pin = (String) request.getAttribute(LoginConsts.PIN);
+                 String ip =super.getRemoteIPs(request);
+                 param.setIp(ip);
+                 param.setModifiedName(pin);
+             }
+             result = declareService.reviewDismissalDeclare(param);
+         } catch (Exception e) {
+             LOG.error(e.getMessage(), e);
+         }
+         return result;
+     }
+    /**
+    * @Title: copyDeclareByDeclareCode
+    * @Description: TODO( 复制申报 )
+    * @author GuoXiaoPeng
+    * @param declareCode 申报编码
+    * @return 申报详情信息
+    * @throws 异常
+     */
+    @PermissionsCode(code = "rest_declare_copy")
+    @RequestMapping(value = "/copyDeclareByDeclareCode/{declareCode}", method = RequestMethod.GET)
+    public ApiResult<DeclareResult> copyDeclareByDeclareCode(@PathVariable String declareCode) {
+         ApiResult<DeclareResult> result = new ApiResult<>();
+         try {
+             if(StringUtil.isNotBlank(declareCode)){
+                 result = declareService.copyDeclareByDeclareCode(declareCode);
+             }
+         } catch (Exception e) {
+             LOG.error(e.getMessage(), e);
+         }
+         return result;
+    }
+    public DeclareService getDeclareService() {
+        return declareService;
+    }
+    public void setDeclareService(DeclareService declareService) {
+        this.declareService = declareService;
+    }
+    public MathCalculator getMathCalculator() {
+        return mathCalculator;
+    }
+    public void setMathCalculator(MathCalculator mathCalculator) {
+        this.mathCalculator = mathCalculator;
+    }
+    
+}

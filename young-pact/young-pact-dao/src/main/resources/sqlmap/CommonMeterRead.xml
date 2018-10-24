@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="CommonMeterRead">
+	<typeAlias alias="commonMeterReadDO" type="com.young.pact.domain.commonmeterread.CommonMeterReadDO" />
+	<typeAlias alias="commonMeterReadVO" type="com.young.pact.domain.commonmeterread.CommonMeterReadVO" />
+	
+	<typeAlias alias="commonMeterReadPicVO" type="com.young.pact.domain.commonmeterread.CommonMeterReadPicVO" />
+	
+	<resultMap class="commonMeterReadVO" id="commonMeterReadResult" groupBy="id">
+        <result property="id" column="id" />
+        <result property="pactCode" column="pactCode" />
+        <result property="pactType" column="pactType" />
+        <result property="tableNumber" column="tableNumber" />
+        <result property="tableItem" column="tableItem" />
+        <result property="type" column="type" />
+        <result property="number" column="number" />
+        <result property="date" column="date" />
+        <result property="remark" column="remark" />
+        <result property="commonMeterReadPicList"  resultMap="CommonMeterRead.picResult"/>
+    </resultMap>
+    <resultMap class="commonMeterReadPicVO" id="picResult">
+        <result property="id" column="picId" />
+        <result property="meterReadId" column="meterReadId" />
+        <result property="url" column="url" />
+        <result property="sort" column="sort" />
+    </resultMap>
+	<sql id="allFields">
+	    id,pact_code AS pactCode,pact_type AS pactType,table_number AS tableNumber,
+	    table_item AS tableItem,type,number,date,remark,
+	    ip,gmt_create as `create`,gmt_modified as modified,gmt_create_name as createName,gmt_modified_name as modifiedName   
+    </sql>
+	<sql id="tableName">
+		pact_common_meter_read
+	</sql>
+	
+	<!-- 保存物品信息 -->
+	<insert id="saveCommonMeterRead" parameterClass="commonMeterReadDO">
+	    INSERT INTO
+        <include refid="CommonMeterRead.tableName" />
+        (pact_code,pact_type,table_number,table_item,`type`,number,`date`,remark,ip,gmt_create,gmt_create_name)
+        values(#pactCode#,#pactType#,#tableNumber#,#tableItem#,#type#,#number#,#date#,#remark#,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 根据合同编码删除抄表信息及抄表图片 -->
+	<delete id="removeCommonMeterRead" parameterClass="java.lang.String">
+	    DELETE
+		    meter,pic
+		FROM
+		    `pact_common_meter_read` meter
+		LEFT JOIN pact_common_meter_read_pic pic ON pic.meter_read_id = meter.id
+		WHERE
+		    meter.pact_code = #pactCode#
+	</delete>
+	<!-- 根据合同编码查询抄表信息及抄表图片 -->
+	<select id="listCommonMeterReadByPactCode" parameterClass="java.lang.String" resultMap="commonMeterReadResult">
+	   SELECT
+	    meter.id,
+	    meter.pact_code AS pactCode,
+	    meter.pact_type AS pactType,
+	    meter.table_number AS tableNumber,
+        meter.table_item AS tableItem,
+        meter.type,
+        meter.number,
+        meter.date,
+        meter.remark,
+        pic.id AS picId,
+        pic.meter_read_id as meterReadId,
+        pic.url,
+        pic.sort
+	    FROM 
+	    <include refid="CommonMeterRead.tableName" /> meter
+	    left join pact_common_meter_read_pic pic on meter.id=pic.meter_read_id
+	    WHERE 
+	    meter.pact_code=#pactCode#
+	</select>
+	<!-- 根据抄表id查询抄表信息 -->
+	<select id="getMeterReadById" parameterClass="java.lang.Long" resultClass="commonMeterReadVO">
+	    SELECT
+	    meter.id,
+        meter.pact_code AS pactCode,
+        meter.pact_type AS pactType,
+        meter.table_number AS tableNumber,
+        meter.table_item AS tableItem,
+        meter.type,
+        meter.number,
+        meter.date,
+        meter.remark
+        FROM 
+        <include refid="CommonMeterRead.tableName" /> meter
+        WHERE 
+        meter.id=#id#
+	</select>
+	<!-- 根据抄表id修改抄表信息 -->
+	<update id="updateMeterReadById" parameterClass="commonMeterReadDO">
+	    update
+           <include refid="CommonMeterRead.tableName" /> 
+        set
+            gmt_modified = now(),gmt_modified_name=#modifiedName#
+        <isNotNull prepend="," property="tableNumber">
+            table_number = #tableNumber#
+        </isNotNull>
+        <isNotNull prepend="," property="tableItem">
+            table_item = #tableItem#
+        </isNotNull>
+        <isNotNull prepend="," property="type">
+            type = #type#
+        </isNotNull>
+        <isNotNull prepend="," property="number">
+            number = #number#
+        </isNotNull>
+        <isNotNull prepend="," property="date">
+            date = #date#
+        </isNotNull>
+        <isNotNull prepend="," property="remark">
+            remark = #remark#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        where
+            id=#id#
+	</update>
+	<!-- 根据抄表id和合同编码删除抄表信息 -->
+	<delete id="removeCommonMeterReadById" parameterClass="commonMeterReadDO">
+	   DELETE
+       FROM
+            <include refid="CommonMeterRead.tableName" /> 
+       where 
+       id = #id# and pact_code=#pactCode#
+	</delete>
+</sqlMap>

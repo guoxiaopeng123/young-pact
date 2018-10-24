@@ -1,0 +1,174 @@
+package com.young.pact.manager.declare.impl;
+
+import java.util.List;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
+import org.springframework.transaction.support.TransactionCallback;
+import org.springframework.transaction.support.TransactionTemplate;
+
+import com.young.common.exception.DaoException;
+import com.young.common.page.PageBean;
+import com.young.common.page.PageTableBean;
+import com.young.pact.common.constant.ErrorPactConsts;
+import com.young.pact.common.exception.PactManagerExcepion;
+import com.young.pact.dao.declare.DeclareDao;
+import com.young.pact.dao.declareprice.DeclarePriceDao;
+import com.young.pact.domain.declare.DeclareDO;
+import com.young.pact.domain.declare.DeclareQuery;
+import com.young.pact.domain.declare.DeclareVO;
+import com.young.pact.domain.declareprice.DeclarePriceDO;
+import com.young.pact.manager.declare.DeclareManager;
+
+/**
+ * @描述 : 申报
+ * @author : GuoXiaoPeng
+ * @创建时间 : 2018年8月13日 下午1:44:17
+ */
+@Component("declareManager")
+public class DeclareManagerImpl implements DeclareManager {
+    private static final Log LOG = LogFactory.getLog(DeclareManagerImpl.class);
+    private DeclareDao declareDao;
+    private PlatformTransactionManager transactionManager;
+    private DeclarePriceDao declarePriceDao;
+    @Override
+    public List<DeclareVO> listDeclareByParam(DeclareQuery declareQuery) {
+        try {
+            return declareDao.listDeclareByParam(declareQuery);
+        } catch (DaoException e) {
+            LOG.error(ErrorPactConsts.QUERY_DECLARE_ERROR, e);
+            throw new PactManagerExcepion(ErrorPactConsts.QUERY_DECLARE_ERROR, e);
+        }catch (Exception e) {
+            LOG.error(ErrorPactConsts.QUERY_DECLARE_ERROR, e);
+            throw new PactManagerExcepion(ErrorPactConsts.QUERY_DECLARE_ERROR, e);
+        }
+    }
+
+    @Override
+    public Boolean saveDeclare(final DeclareDO declareDO, final List<DeclarePriceDO> declarePriceDOs) {
+        TransactionTemplate transactionTemplate =  new TransactionTemplate(transactionManager);
+        return transactionTemplate.execute(new TransactionCallback<Boolean>() {
+            @Override
+            public Boolean doInTransaction(TransactionStatus status) {
+                try {
+                    Long declareId = declareDao.saveDeclare(declareDO);
+                    if(declareId<=0){
+                        status.setRollbackOnly();
+                        return false;
+                    }
+                    int declarePriceId = declarePriceDao.saveDeclarePrice(declarePriceDOs);
+                    if(declarePriceId<=0){
+                        status.setRollbackOnly();
+                        return false;
+                    }
+                    return true;
+                } catch (DaoException e) {
+                    status.setRollbackOnly();
+                    LOG.error(ErrorPactConsts.SAVE_DECLARE_ERROR, e);
+                    throw new PactManagerExcepion(ErrorPactConsts.SAVE_DECLARE_ERROR, e);
+                }catch (Exception e) {
+                    status.setRollbackOnly();
+                    LOG.error(ErrorPactConsts.SAVE_DECLARE_ERROR, e);
+                    throw new PactManagerExcepion(ErrorPactConsts.SAVE_DECLARE_ERROR, e);
+                }
+            }
+        });
+    }
+
+    @Override
+    public PageBean<DeclareVO> listDeclare(DeclareQuery query) {
+        try {
+            Integer count =  declareDao.countDeclare(query);
+            PageBean<DeclareVO> page = new PageTableBean<>(query.getPageIndex(), query.getPageSize());
+            if(null != count && count != 0) {
+                page.setTotalItem(count);
+                int startRow = page.getStartRow();
+                if(startRow > 0) {
+                    startRow -= 1;
+                }
+                query.setStartRow(startRow);
+                List<DeclareVO> declareVOs = declareDao.listDeclare(query);
+                page.addAll(declareVOs);
+            }
+            return page;
+        } catch (DaoException e) {
+            // TODO: handle exception
+            LOG.error(ErrorPactConsts.QUERY_DECLARE_TABLE_ERROR, e);
+            throw new PactManagerExcepion(ErrorPactConsts.QUERY_DECLARE_TABLE_ERROR,e);
+        }
+    }
+
+    @Override
+    public DeclareVO getDeclareByDeclareCode(String declareCode) {
+        try {
+            DeclareVO declareVO = declareDao.getDeclareByDeclareCode(declareCode);
+            return declareVO;
+        } catch (DaoException e) {
+            LOG.error(ErrorPactConsts.QUERY_DECLARE_DETAIL_ERROR, e);
+            throw new PactManagerExcepion(ErrorPactConsts.QUERY_DECLARE_DETAIL_ERROR,e);
+        }
+    }
+
+    @Override
+    public boolean updateDeclareStateByCode(final DeclareDO declareDO) {
+        TransactionTemplate transactionTemplate = getDataSourceTransactionManager();
+        return transactionTemplate.execute(new TransactionCallback<Boolean>() {
+
+            @Override
+            public Boolean doInTransaction(TransactionStatus status) {
+                try {
+                    Integer count = declareDao.updateDeclareState(declareDO);
+                    if(count<=0){
+                        status.setRollbackOnly();
+                        return false;
+                    }
+                    return true;
+                } catch (DaoException e) {
+                    status.setRollbackOnly();
+                    LOG.error(ErrorPactConsts.UPDATE_DECLARE_STATE_ERROR, e);
+                    throw new PactManagerExcepion(ErrorPactConsts.UPDATE_DECLARE_STATE_ERROR,e);
+                }
+            }
+        });
+    }
+    
+    @Override
+    public Integer countUnauditedDeclare(String houseCode) {
+        try {
+            return declareDao.countUnauditedDeclare(houseCode);
+        } catch (Exception e) {
+            LOG.error(ErrorPactConsts.COUNT_UNAUDITE_DDECLARE_ERROR, e);
+            throw new PactManagerExcepion(ErrorPactConsts.COUNT_UNAUDITE_DDECLARE_ERROR,e);
+        }
+    }
+    private TransactionTemplate getDataSourceTransactionManager() {
+        return new TransactionTemplate(transactionManager);
+    }
+
+    public DeclareDao getDeclareDao() {
+        return declareDao;
+    }
+
+    public void setDeclareDao(DeclareDao declareDao) {
+        this.declareDao = declareDao;
+    }
+
+    public PlatformTransactionManager getTransactionManager() {
+        return transactionManager;
+    }
+
+    public void setTransactionManager(PlatformTransactionManager transactionManager) {
+        this.transactionManager = transactionManager;
+    }
+
+    public DeclarePriceDao getDeclarePriceDao() {
+        return declarePriceDao;
+    }
+
+    public void setDeclarePriceDao(DeclarePriceDao declarePriceDao) {
+        this.declarePriceDao = declarePriceDao;
+    }
+}

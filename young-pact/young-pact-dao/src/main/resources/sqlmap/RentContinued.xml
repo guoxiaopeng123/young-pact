@@ -1,0 +1,383 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="RentContinued">
+    <!-- 实体类别名 -->
+    <typeAlias alias="rentContinuedDO" type="com.young.pact.domain.rentcontinued.RentContinuedDO" />
+    <typeAlias alias="rentContinuedQuery" type="com.young.pact.domain.rentcontinued.RentContinuedQuery" />
+    <typeAlias alias="rentContinuedVO" type="com.young.pact.domain.rentcontinued.RentContinuedVO" />
+    <!-- 所有字段 -->
+    <sql id="allFields">
+       id,renew_code AS renewCode,address,native AS nativePlance,pirmary_pact_code AS pirmaryPactCode,new_pact_code AS newPactCode,renew_reason AS renewReason,remark,renew_time AS renewTime,signing_time AS signingTime ,state,is_delete AS isDelete,
+       ip,gmt_create as `create`,gmt_modified as modified,gmt_create_name as createName,gmt_modified_name as modifiedName   
+    </sql>
+    <!-- 表名 -->
+    <sql id="tableName">
+        pact_rent_continued
+    </sql>
+    <select id="countAllProtocolByPactCode" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+        SELECT
+		    sum(protocol.count) AS count
+		FROM
+		    (
+		        SELECT
+		            count(id) AS count
+		        FROM
+		            pact_rent_turn turn
+		        WHERE
+		            turn.state   <![CDATA[ <>]]> 3 and turn.is_delete=0 and turn.pirmary_pact_code=#rentPactCode#
+		        UNION ALL
+		            SELECT
+		                count(id) AS count
+		            FROM
+		                pact_rent_continued continued
+		            WHERE
+		                continued.state  <![CDATA[ <>]]> 3 and continued.is_delete=0 and continued.pirmary_pact_code=#rentPactCode#
+		            UNION ALL
+		                SELECT
+		                    count(id) AS count
+		                FROM
+		                    pact_rent_transfer transfer
+		                WHERE
+		                    transfer.state  <![CDATA[ <>]]> 3 and transfer.is_delete=0 and transfer.pirmary_pact_code=#rentPactCode#
+		                UNION ALL
+		                    SELECT
+		                        count(id) AS count
+		                    FROM
+		                        pact_rent_termination termination
+		                    WHERE
+		                        termination.state  <![CDATA[ <>]]> 3 and termination.is_delete=0 and termination.pirmary_pact_code=#rentPactCode#
+		    ) protocol
+    </select>
+    <!--     保存续签协议 -->
+    <insert id="saveRentContinued" parameterClass="rentContinuedDO">
+        INSERT INTO
+        <include refid="RentContinued.tableName" />
+        (renew_code,address,native,pirmary_pact_code,new_pact_code,renew_reason,remark,renew_time,signing_time,state,is_delete,
+        ip,gmt_create,gmt_modified,gmt_create_name,gmt_modified_name)
+        VALUES
+        (#renewCode#,#address#,#nativePlance#,#pirmaryPactCode#,#newPactCode#,#renewReason#,#remark#,#renewTime#,#signingTime#,#state#,0,
+         #ip#,NOW(),#modified#,#createName#,#modifiedName#)
+        <selectKey resultClass="long" keyProperty="id">
+            SELECT @@IDENTITY AS id
+        </selectKey>
+    </insert>
+    <!-- 查询续签协议总数 -->
+    <select id="count" parameterClass="rentContinuedQuery" resultClass="java.lang.Integer">
+        SELECT
+            count(continued.id)
+        FROM
+            pact_rent_continued continued
+        LEFT JOIN pact_common_belonger belonger ON continued.renew_code = belonger.pact_code
+        LEFT JOIN pact_rent_room room on  room.rent_pact_code = continued.pirmary_pact_code
+        WHERE
+            continued.is_delete = 0  and  belonger.user_role = '维护人'
+       <isNotEmpty property="startDeadline" prepend="and">
+             <![CDATA[continued.renew_time >= ]]>#startDeadline#
+        </isNotEmpty>
+        <isNotEmpty property="endDeadline" prepend="and">
+             <![CDATA[continued.renew_time < ]]>#endDeadline#
+        </isNotEmpty>
+        <isNotEmpty property="startDealTime" prepend="and">
+             <![CDATA[continued.signing_time >= ]]>#startDealTime#
+        </isNotEmpty>
+        <isNotEmpty property="endDealTime" prepend="and">
+             <![CDATA[continued.signing_time < ]]>#endDealTime#
+        </isNotEmpty>
+        <isNotEmpty property="deptCode" prepend="and">
+            belonger.dept_code  like concat('%',#deptCode#,'%')
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend="and">
+            continued.state=#state#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="and">
+             (
+                continued.renew_code like
+                concat('%',#keyword#,'%') or
+                continued.address like concat('%',#keyword#,'%') or
+                continued.pirmary_pact_code like concat('%',#keyword#,'%') or 
+                continued.new_pact_code like concat('%',#keyword#,'%') 
+              )
+        </isNotEmpty>
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+    </select>
+     <!-- 查询续签租协议列表 -->
+    <select id="listParam" parameterClass="rentContinuedQuery" resultClass="rentContinuedVO">
+        SELECT
+            continued.renew_code AS renewCode,
+            continued.native AS nativePlance,
+            continued.address,
+            continued.pirmary_pact_code AS pirmaryPactCode,
+            continued.new_pact_code AS newPactCode,
+            continued.renew_time as  renewTime,
+            continued.signing_time as signingTime,
+            continued.gmt_create as `create`,
+            continued.state,
+            belonger.dept_name AS duardianDeptName,
+            belonger.user_name AS duardianUserName,
+            room.rent_way as rentWay
+        FROM
+            pact_rent_continued continued
+        LEFT JOIN pact_common_belonger belonger ON continued.renew_code = belonger.pact_code
+        LEFT JOIN pact_rent_room room on  room.rent_pact_code = continued.pirmary_pact_code
+        WHERE
+            continued.is_delete = 0  and  belonger.user_role = '维护人'
+       <isNotEmpty property="startDeadline" prepend="and">
+             <![CDATA[continued.renew_time >= ]]>#startDeadline#
+        </isNotEmpty>
+        <isNotEmpty property="endDeadline" prepend="and">
+             <![CDATA[continued.renew_time < ]]>#endDeadline#
+        </isNotEmpty>
+          <isNotEmpty property="startDealTime" prepend="and">
+             <![CDATA[continued.signing_time >= ]]>#startDealTime#
+        </isNotEmpty>
+        <isNotEmpty property="endDealTime" prepend="and">
+             <![CDATA[continued.signing_time < ]]>#endDealTime#
+        </isNotEmpty>
+        <isNotEmpty property="deptCode" prepend="and">
+            belonger.dept_code  like concat('%',#deptCode#,'%')
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend="and">
+            continued.state=#state#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="and">
+             (
+                continued.renew_code like
+                concat('%',#keyword#,'%') or
+                continued.address like concat('%',#keyword#,'%') or
+                continued.pirmary_pact_code like concat('%',#keyword#,'%') or 
+                continued.new_pact_code like concat('%',#keyword#,'%') 
+              )
+        </isNotEmpty>
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+        ORDER BY continued.renew_time DESC,continued.signing_time DESC,continued.gmt_create DESC LIMIT #startRow#,#pageSize#
+    </select>
+    <!-- 查询登录人有没有权限查看详情-->
+    <select id="getPermissions" parameterClass="rentContinuedQuery" resultClass="rentContinuedVO">
+        SELECT
+            continued.renew_code AS renewCode
+        FROM
+            pact_rent_continued continued
+        LEFT JOIN pact_common_belonger belonger ON continued.renew_code = belonger.pact_code
+        WHERE
+            continued.is_delete = 0  and  belonger.user_role = '维护人'
+            and continued.renew_code = #renewCode#
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+        LIMIT 1
+    </select>
+    <!--     续签协议详情 -->
+    <select id="getRentContinuedByRenewCode" parameterClass="java.lang.String" resultClass="rentContinuedVO">
+        select   
+        continued.id,
+        continued.renew_code AS renewCode,
+        continued.address,
+        continued.native AS nativePlance,
+        continued.pirmary_pact_code AS pirmaryPactCode,
+        continued.new_pact_code AS newPactCode,
+        continued.renew_reason AS renewReason,
+        continued.remark,
+        continued.renew_time AS renewTime,
+        continued.signing_time AS signingTime ,
+        continued.state,
+        continued.is_delete AS isDelete,
+        continued.ip,
+        continued.gmt_create as `create`,
+        continued.gmt_modified as modified,
+        continued.gmt_create_name as createName,
+        continued.gmt_modified_name as modifiedName,   
+        belonger.user_name AS dealName,
+        belonger.dept_name AS dealDeptName,
+        belonger.user_pin AS dealUserPin,
+        belonger.dept_code AS dealDeptCode
+        from 
+        pact_rent_continued continued
+        LEFT JOIN pact_common_belonger belonger ON continued.renew_code = belonger.pact_code
+        where renew_code = #renewCode# and belonger.user_role = '签约管家' 
+        LIMIT 1
+    </select>
+    <!-- 修改续签协议审核状态-->
+    <update id="updateRentContinuedStateByCode" parameterClass="rentContinuedDO">
+         UPDATE
+        pact_rent_continued
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#
+        <isNotNull property="state" prepend=",">
+            state=#state#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE renew_code=#renewCode#
+    </update>
+    <!-- 修改续签协议-->
+    <update id="updateRentContinuedByRenewCode" parameterClass="rentContinuedDO">
+        update 
+        pact_rent_continued
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        <isNotEmpty property="signingTime" prepend=",">
+            signing_time=#signingTime#
+        </isNotEmpty>
+        <isNotEmpty property="renewReason" prepend=",">
+            renew_reason=#renewReason#
+        </isNotEmpty>
+        <isNotEmpty property="remark" prepend=",">
+            remark=#remark#
+        </isNotEmpty>
+        WHERE renew_code=#renewCode#
+    </update>
+    <!--     删除续签协议 -->
+    <update id="removeRentContinuedByReletCode" parameterClass="rentContinuedDO">
+        UPDATE
+        pact_rent_continued
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#,is_delete=1
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE renew_code=#renewCode#
+    </update>
+    <!--    条件查询托出合同续签协议集合 -->
+    <select id="listRentcontinuedByParam" parameterClass="rentContinuedQuery" resultClass="rentContinuedVO">
+        SELECT 
+           continued.renew_code renewCode,
+           guardianBelonger.userPin guardianPin
+        from 
+         pact_rent_continued continued
+         LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        )guardianBelonger ON continued.renew_code = guardianBelonger.pactCode 
+        where continued.is_delete = 0 
+        <isNotEmpty property="state" prepend="and">
+            continued.state = #state# 
+        </isNotEmpty>
+    </select>
+    <!--    查询录入托出合同续签协议超过24小时未提交审核的托出合同续签协议 -->
+    <select id="listUnsubmitted" parameterClass="rentContinuedQuery" resultClass="rentContinuedVO">
+        SELECT 
+           continued.renew_code renewCode,
+           guardianBelonger.userPin guardianPin
+        from 
+        pact_rent_continued continued
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        )guardianBelonger ON continued.renew_code = guardianBelonger.pactCode 
+        where continued.is_delete = 0  and continued.state = #state# 
+        AND TIMESTAMPDIFF(HOUR, continued.gmt_create, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, continued.gmt_create, NOW())  <![CDATA[ < ]]> 48 
+    </select>
+    <!--    查询托出合同续签协议提交审核后超过24小时没有审核通过或驳回的托出合同续签协议-->
+    <select id="listUnReview" parameterClass="rentContinuedQuery" resultClass="rentContinuedVO">
+        SELECT 
+           continued.renew_code renewCode,
+           guardianBelonger.userPin guardianPin
+        from 
+        pact_rent_continued continued
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        )guardianBelonger ON continued.renew_code = guardianBelonger.pactCode 
+        where continued.is_delete = 0  and continued.state = #state# 
+        AND TIMESTAMPDIFF(HOUR, continued.gmt_modified, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, continued.gmt_modified, NOW())  <![CDATA[ < ]]> 48 
+    </select>
+</sqlMap>

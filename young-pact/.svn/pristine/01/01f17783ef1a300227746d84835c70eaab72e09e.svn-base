@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="PactRentTermination">
+	<typeAlias alias="PactRentTerminationDO" type="com.young.pact.domain.pactrenttermination.PactRentTerminationDO" />
+	<typeAlias alias="PactRentTerminationVO" type="com.young.pact.domain.pactrenttermination.PactRentTerminationVO" />
+	<typeAlias alias="PactRentTerminationQuery" type="com.young.pact.domain.pactrenttermination.PactRentTerminationQuery" />
+	<sql id="allFields">
+	    id,dissolution_code as dissolutionCode,address,pirmary_end_time as pirmaryEndTime,pirmary_pact_code as pirmaryPactCode,
+	    name,account_num as accountNum,case_bank as caseBank,open_bank AS openBank,tel,dissolution_reason as dissolutionReason,
+	    remark,dissolution_time as dissolutionTime,dissolution_type as dissolutionType, state,is_delete as isDelete,
+	    ip,gmt_create as gmtCreate,gmt_create_name as gmtCteateName,gmt_modified as gmtModified , 
+	    gmt_modified_name as gmtModifiedName
+    </sql>
+	<sql id="tableName">
+		pact_rent_termination
+	</sql>
+	 
+	<!-- 新增解约协议 -->
+	<insert id="insertTermination" parameterClass="PactRentTerminationDO">
+		insert into
+			<include refid="PactRentTermination.tableName" />
+		(dissolution_code,address,pirmary_end_time,pirmary_pact_code,name,account_num,case_bank,open_bank,tel,
+		dissolution_reason,remark,dissolution_time,dissolution_type,state,is_delete,ip,gmt_create,gmt_create_name)
+		values
+		(#dissolutionCode#,#address#,#pirmaryEndTime#,#pirmaryPactCode#,#name#,#accountNum#,#caseBank#,#openBank#,#tel#,
+		#dissolutionReason#,#remark#,#dissolutionTime#,#dissolutionType#,#state#,#isDelete#,#ip#,now(),#createName#)
+		<selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 获取调房协议详情 -->
+	<select id="getTermination" parameterClass="PactRentTerminationQuery" resultClass="PactRentTerminationVO">
+		select
+			<include refid="PactRentTermination.allFields" />
+		from
+			<include refid="PactRentTermination.tableName" />
+		where
+			dissolution_code = #dissolutionCode#
+	    LIMIT 1   
+	</select>
+	<!-- 修改调房协议 -->
+	<update id="updateTermination" parameterClass="PactRentTerminationDO">
+		update
+			<include refid="PactRentTermination.tableName" />
+		set
+			gmt_modified = now(),gmt_modified_name=#modifiedName#
+		<isNotNull prepend="," property="isDelete">
+            is_delete = #isDelete#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        <isNotNull prepend="," property="dissolutionTime">
+            dissolution_time = #dissolutionTime#
+        </isNotNull>
+        <isNotNull prepend="," property="pirmaryEndTime">
+            pirmary_end_time = #pirmaryEndTime#
+        </isNotNull>
+        <isNotNull prepend="," property="dissolutionReason">
+            dissolution_reason = #dissolutionReason#
+        </isNotNull>
+        <isNotNull prepend="," property="remark">
+            remark = #remark#
+        </isNotNull>
+        <isNotNull prepend="," property="name">
+            name = #name#
+        </isNotNull>
+        <isNotNull prepend="," property="accountNum">
+            account_num = #accountNum#
+        </isNotNull>
+        <isNotNull prepend="," property="caseBank">
+            case_bank = #caseBank#
+        </isNotNull>
+        <isNotNull prepend="," property="openBank">
+            open_bank = #openBank#
+        </isNotNull>
+        <isNotNull prepend="," property="tel">
+            tel = #tel#
+        </isNotNull>
+        <isNotNull prepend="," property="state">
+            state = #state#
+        </isNotNull>
+        where 
+        	dissolution_code=#dissolutionCode#
+	</update>
+	<!-- 查询解约协议列表 -->
+	<select id="listTermination" parameterClass="PactRentTerminationQuery" resultClass="PactRentTerminationVO">
+		SELECT
+		    termination.dissolution_code AS dissolutionCode,
+		    termination.pirmary_pact_code AS pirmaryPactCode,
+		    termination.new_pact_code AS newPactCode,
+		    room.rent_way as rentWay,
+		    termination.dissolution_type as dissolutionType,
+		    termination.address,
+		    termination.dissolution_time as dissolutionTime,
+		    belonger.user_name AS userName,
+		    belonger.dept_name AS deptName,
+		    termination.gmt_create as gmtCreate,
+		    termination.state,
+		    termination.pirmary_end_time as pirmaryEndTime
+		FROM
+		    pact_rent_termination termination
+		LEFT JOIN pact_common_belonger belonger ON termination.dissolution_code = belonger.pact_code
+		LEFT JOIN pact_rent_room room on  room.rent_pact_code = termination.pirmary_pact_code
+		WHERE
+		    termination.is_delete = 0 and  belonger.user_role = '维护人'
+		<isNotEmpty property="pirmaryEndTimeStart" prepend="and">
+             <![CDATA[termination.pirmary_end_time >= ]]>#pirmaryEndTimeStart#
+        </isNotEmpty>
+        <isNotEmpty property="pirmaryEndTimeEnd" prepend="and">
+             <![CDATA[termination.pirmary_end_time < ]]>#pirmaryEndTimeEnd#
+        </isNotEmpty>
+        <isNotEmpty property="dissolutionTimeStart" prepend="and">
+             <![CDATA[termination.dissolution_time >= ]]>#dissolutionTimeStart#
+        </isNotEmpty>
+        <isNotEmpty property="dissolutionTimeEnd" prepend="and">
+             <![CDATA[termination.dissolution_time < ]]>#dissolutionTimeEnd#
+        </isNotEmpty>
+        <isNotEmpty property="deptCode" prepend="and">
+            belonger.dept_code = #deptCode#
+        </isNotEmpty>
+        <isNotEmpty property="dissolutionType" prepend="and">
+            termination.dissolution_type=#dissolutionType#
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend="and">
+            termination.state=#state#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="and">
+             (
+                termination.dissolution_code like concat('%',#keyword#,'%') or
+                termination.address like concat('%',#keyword#,'%') or
+                termination.pirmary_pact_code like concat('%',#keyword#,'%') or 
+                termination.new_pact_code like concat('%',#keyword#,'%')
+              )
+        </isNotEmpty>
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+        ORDER BY termination.gmt_create DESC LIMIT #startRow#,#pageSize#
+			
+	</select>
+	<!-- 查询解约协议数量 -->
+	<select id="countTermination" parameterClass="PactRentTerminationQuery" resultClass="java.lang.Integer">
+		SELECT
+		    count(termination.id)
+		FROM
+		    pact_rent_termination termination
+		LEFT JOIN pact_common_belonger belonger ON termination.dissolution_code = belonger.pact_code
+		LEFT JOIN pact_rent_room room on  room.rent_pact_code = termination.pirmary_pact_code
+		WHERE
+		    termination.is_delete = 0 and  belonger.user_role = '维护人'
+		<isNotEmpty property="pirmaryEndTimeStart" prepend="and">
+             <![CDATA[termination.pirmary_end_time >= ]]>#pirmaryEndTimeStart#
+        </isNotEmpty>
+        <isNotEmpty property="pirmaryEndTimeEnd" prepend="and">
+             <![CDATA[termination.pirmary_end_time < ]]>#pirmaryEndTimeEnd#
+        </isNotEmpty>
+        <isNotEmpty property="dissolutionTimeStart" prepend="and">
+             <![CDATA[termination.dissolution_time >= ]]>#dissolutionTimeStart#
+        </isNotEmpty>
+        <isNotEmpty property="dissolutionTimeEnd" prepend="and">
+             <![CDATA[termination.dissolution_time < ]]>#dissolutionTimeEnd#
+        </isNotEmpty>
+        <isNotEmpty property="deptCode" prepend="and">
+            belonger.dept_code = #deptCode#
+        </isNotEmpty>
+        <isNotEmpty property="dissolutionType" prepend="and">
+            termination.dissolution_type=#dissolutionType#
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend="and">
+            termination.state=#state#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="and">
+             (
+                termination.dissolution_code like concat('%',#keyword#,'%') or
+                termination.address like concat('%',#keyword#,'%') or
+                termination.pirmary_pact_code like concat('%',#keyword#,'%') or 
+                termination.new_pact_code like concat('%',#keyword#,'%')
+              )
+        </isNotEmpty>
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+	</select>
+	<!-- 查询登录人有没有权限查看详情  -->
+    <select id="getPermissions" parameterClass="PactRentTerminationQuery" resultClass="PactRentTerminationVO">
+        SELECT
+            termination.dissolution_code AS dissolutionCode
+        FROM
+            pact_rent_termination termination
+        LEFT JOIN pact_common_belonger belonger ON termination.dissolution_code = belonger.pact_code
+        WHERE
+            termination.is_delete = 0 and  belonger.user_role = '维护人'
+            and  termination.dissolution_code = #dissolutionCode#
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+        LIMIT 1   
+    </select>
+    <!-- 	条件查询托出合同解约协议集合 -->
+	<select id="listRentTerminationByParam" parameterClass="PactRentTerminationQuery" resultClass="PactRentTerminationVO" >
+	    SELECT 
+           termination.dissolution_code dissolutionCode,
+           guardianBelonger.userPin guardianPin
+        from 
+        pact_rent_termination termination
+         LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        )guardianBelonger ON termination.dissolution_code = guardianBelonger.pactCode 
+        where termination.is_delete = 0 
+        <isNotEmpty property="state" prepend="and">
+            termination.state = #state# 
+        </isNotEmpty>
+	</select>
+    <!-- 	查询托出合同解约协议提交审核后超过24小时没有审核通过或驳回的托出合同解约协议-->
+	<select id="listUnsubmitted" parameterClass="PactRentTerminationQuery" resultClass="PactRentTerminationVO" >
+	    SELECT 
+            termination.dissolution_code dissolutionCode,
+            guardianBelonger.userPin guardianPin
+        from 
+        pact_rent_termination termination
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        ) guardianBelonger ON guardianBelonger.pactCode = termination.dissolution_code
+        where termination.is_delete = 0 and termination.state = #state# 
+        AND TIMESTAMPDIFF(HOUR, termination.gmt_create, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, termination.gmt_create, NOW())  <![CDATA[ < ]]> 48 
+	</select>
+    <!-- 	查询录入托出合同解约协议超过24小时未提交审核的托出合同解约协议 -->
+	<select id="listUnReview" parameterClass="PactRentTerminationQuery" resultClass="PactRentTerminationVO" >
+	    SELECT 
+            termination.dissolution_code dissolutionCode,
+            guardianBelonger.userPin guardianPin
+        from 
+        pact_rent_termination termination
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        ) guardianBelonger ON guardianBelonger.pactCode = termination.dissolution_code
+        where termination.is_delete = 0 and termination.state = #state# 
+        AND TIMESTAMPDIFF(HOUR, termination.gmt_modified, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, termination.gmt_modified, NOW())  <![CDATA[ < ]]> 48 
+	</select>
+</sqlMap> 

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="CommonBelonger">
+	<typeAlias alias="commonBelongerDO" type="com.young.pact.domain.commonbelonger.CommonBelongerDO" />
+	<typeAlias alias="commonBelongerQuery" type="com.young.pact.domain.commonbelonger.CommonBelongerQuery" />
+	<typeAlias alias="commonBelongerVO" type="com.young.pact.domain.commonbelonger.CommonBelongerVO" />
+	<sql id="allFields">
+	    id,pact_code,pact_type,user_pin,user_name,user_tel,user_role,dept_code,dept_name,ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		pact_common_belonger
+	</sql>
+	
+	<!-- 保存合同责任人信息 -->
+	<insert id="saveCommonBelonger" parameterClass="commonBelongerDO">
+	    INSERT INTO
+        <include refid="CommonBelonger.tableName" />
+        (pact_code,pact_type,user_pin,user_name,user_tel,user_role,dept_code,dept_name,ip,gmt_create,gmt_create_name)
+        values(#pactCode#,#pactType#,#userPin#,#userName#,#userTel#,#userRole#,#deptCode#,#deptName#,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	<insert id="batchSaveCommonBelonger" parameterClass="commonBelongerDO">
+	    INSERT INTO
+        <include refid="CommonBelonger.tableName" />
+        (pact_code,pact_type,user_pin,user_name,user_tel,user_role,dept_code,dept_name,ip,gmt_create,gmt_create_name)
+        values(#pactCode#,#pactType#,#userPin#,#userName#,#userTel#,#userRole#,#deptCode#,#deptName#,#ip#,NOW(),#createName#)
+	</insert>
+	<!-- 根据合同编码查询合同责任人信息集合 -->
+	<select id="listCommonBelonger" parameterClass="java.lang.String" resultClass="commonBelongerVO">
+	    SELECT
+		    id,pact_code pactCode,pact_type pactType,user_pin userPin,user_name userName,user_tel userTel,user_role userRole,dept_code deptCode,dept_name deptName,gmt_create `create`,gmt_create_name createName
+		FROM
+		    <include refid="CommonBelonger.tableName" />
+		WHERE
+		    pact_code = #pactCode#
+	</select>
+	<!-- 根据合同编和角色查询合同责任人 -->
+    <select id="getBelongerByParam" parameterClass="commonBelongerQuery" resultClass="commonBelongerVO">
+        SELECT
+            id,pact_code pactCode,pact_type pactType,user_pin userPin,user_name userName,user_tel userTel,user_role userRole,dept_code deptCode,dept_name deptName,gmt_create `create`,gmt_create_name createName
+        FROM
+            <include refid="CommonBelonger.tableName" />
+        WHERE
+            pact_code = #pactCode# and user_role = #userRole#
+    </select>
+	
+	<!-- 根据合同编码删除合同责任人信息 -->
+	<delete id="removeCommonBelonger" parameterClass="java.lang.String">
+	    DELETE FROM <include refid="CommonBelonger.tableName" /> WHERE pact_code = #pactCode#
+	</delete>
+	
+	<!-- 修改合同责任人 -->
+	<update id="updateCommonBelonger" parameterClass="commonBelongerDO">
+	    UPDATE
+            <include refid="CommonBelonger.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="userPin">
+            user_pin = #userPin#
+        </isNotNull>
+        <isNotNull prepend="," property="userName">
+            user_name = #userName#
+        </isNotNull>
+        <isNotNull prepend="," property="userTel">
+            user_tel = #userTel#
+        </isNotNull>
+        <isNotNull prepend="," property="deptName">
+            dept_name = #deptName#
+        </isNotNull>
+        <isNotNull prepend="," property="deptCode">
+            dept_code = #deptCode#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE pact_code = #pactCode# AND id = #id#
+	</update>
+
+	
+	<!-- 根据合同编码修改合同责任人 -->
+    <update id="updateCommonBelongers" parameterClass="commonBelongerDO">
+        UPDATE
+            <include refid="CommonBelonger.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="userPin">
+            user_pin = #userPin#
+        </isNotNull>
+        <isNotNull prepend="," property="userName">
+            user_name = #userName#
+        </isNotNull>
+        <isNotNull prepend="," property="userTel">
+            user_tel = #userTel#
+        </isNotNull>
+        <isNotNull prepend="," property="deptName">
+            dept_name = #deptName#
+        </isNotNull>
+        <isNotNull prepend="," property="deptCode">
+            dept_code = #deptCode#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE pact_code = #pactCode# 
+        <isNotEmpty property="userRole" prepend="and">
+            user_role = #userRole#
+        </isNotEmpty>
+    </update>
+
+	<!-- 批量修改合同责任人 -->
+    <update id="batchUpdateCommonBelonger" parameterClass="commonBelongerDO">
+        UPDATE
+            <include refid="CommonBelonger.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="userPin">
+            user_pin = #userPin#
+        </isNotNull>
+        <isNotNull prepend="," property="userName">
+            user_name = #userName#
+        </isNotNull>
+        <isNotNull prepend="," property="userTel">
+            user_tel = #userTel#
+        </isNotNull>
+        <isNotNull prepend="," property="deptName">
+            dept_name = #deptName#
+        </isNotNull>
+        <isNotNull prepend="," property="deptCode">
+            dept_code = #deptCode#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE pact_code = #pactCode# AND id = #id#
+    </update>
+	
+
+</sqlMap>

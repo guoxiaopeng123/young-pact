@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<project xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd" xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.young</groupId>
+    <artifactId>young-pact</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+  </parent>
+  <artifactId>young-pact-work</artifactId>
+  <packaging>war</packaging>
+   <dependencies>
+     <dependency>
+        <groupId>com.young</groupId>
+        <artifactId>young-pact-service</artifactId>
+        <version>${project.parent.version}</version>
+     </dependency>
+     <dependency>
+        <groupId>com.young</groupId>
+        <artifactId>young-pact-manager</artifactId>
+        <version>${project.parent.version}</version>
+     </dependency>
+    </dependencies>
+      <build>
+        <finalName>young-pact-work</finalName>
+         <resources>
+         <resource>
+                <directory>src/main/resources</directory>
+                <excludes>
+                    <exclude>env/dev/*</exclude>
+                    <exclude>env/test/*</exclude>
+                    <exclude>env/pro/*</exclude>
+                </excludes>
+            </resource> 
+              
+          <resource>
+                 <directory>src/main/resources/env/${env}</directory>
+                 <targetPath>props</targetPath>
+          </resource> 
+        </resources>
+    </build>
+</project>

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="CommonTradingRecord">
+	<typeAlias alias="commonTradingRecordDO" type="com.young.pact.domain.commontradingrecord.CommonTradingRecordDO" />
+	<typeAlias alias="commonTradingRecordQuery" type="com.young.pact.domain.commontradingrecord.CommonTradingRecordQuery" />
+	<typeAlias alias="commonTradingRecordVO" type="com.young.pact.domain.commontradingrecord.CommonTradingRecordVO" />
+	<sql id="allFields">
+	    id,room_code as roomCode,pact_code AS pactCode,type,price,date,user_name AS userName,dept_name AS deptName,
+	    ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		pact_common_trading_record
+	</sql>
+	
+	<!-- 保存交易记录 -->
+	<insert id="saveTradingRecord" parameterClass="commonTradingRecordDO">
+	    INSERT INTO
+        <include refid="CommonTradingRecord.tableName" />
+        (room_code,pact_code,type,price,date,user_name,dept_name,
+         ip,gmt_create,gmt_create_name
+        )
+        values(
+         #roomCode#,#pactCode#,#type#,#price#,#date#,#userName#,#deptName#,
+         #ip#,NOW(),#createName#
+        )
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	<!-- 查询交易记录总数 -->
+    <select id="countTradingRecord" parameterClass="commonTradingRecordQuery" resultClass="java.lang.Integer">
+     select 
+        count(id)
+     from 
+        <include refid="CommonTradingRecord.tableName" />
+     where room_code = #roomCode#
+    </select>
+    <!-- 查询交易记录-->
+    <select id="listTradingRecord" parameterClass="commonTradingRecordQuery" resultClass="commonTradingRecordVO">
+     select 
+        <include refid="CommonTradingRecord.allFields" />
+     from 
+        <include refid="CommonTradingRecord.tableName" />
+     where room_code = #roomCode#
+     ORDER BY gmt_create LIMIT #startRow#,#pageSize#
+    </select>
+</sqlMap>

@@ -1,0 +1,746 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="RentBase">
+    <!-- 实体类别名 -->
+    <typeAlias alias="rentBaseDO" type="com.young.pact.domain.rentbase.RentBaseDO" />
+    <typeAlias alias="rentBaseQuery" type="com.young.pact.domain.rentbase.RentBaseQuery" />
+    <typeAlias alias="rentBaseVO" type="com.young.pact.domain.rentbase.RentBaseVO" />
+    <typeAlias alias="commonBelongerVO" type="com.young.pact.domain.commonbelonger.CommonBelongerVO" />
+    <!-- 所有字段 -->
+    <sql id="allFields">
+       id,rent_pact_code as rentPactCode,paper_pact_code as paperPactCode, 
+       start_time as startTime,end_time as endTime,pact_term as pactTerm,
+       price,deposit,pay,custody,pay_days as payDays,first_pay_time as firstPayTime,
+       monthly_payment as monthlyPayment, remark,signing_time as signingTime,account,
+       account_name accountName,bank,open_bank as openBank,state,due_state as dueState,deal_state as dealState,
+       cancel_state as cancelState,is_delete as isDelete,is_effective as isEffective,
+       ip,gmt_create as `create`,gmt_modified as modified,gmt_create_name as createName,gmt_modified_name as modifiedName   
+    </sql>
+    <!-- 表名 -->
+    <sql id="tableName">
+        pact_rent_base
+    </sql>
+    <!-- 插入托出合同基本信息 -->
+    <insert id="saveRentBase" parameterClass="rentBaseDO">
+        INSERT INTO
+        <include refid="RentBase.tableName" />
+        (rent_pact_code,paper_pact_code,start_time,end_time,pact_term,
+        price,deposit,pay,custody,pay_days,first_pay_time,monthly_payment,
+        remark,signing_time,account,account_name,bank,tel,open_bank,state,due_state,deal_state,cancel_state,is_delete,is_effective,
+        ip,gmt_create,gmt_modified,gmt_create_name,gmt_modified_name)
+        VALUES
+        (#rentPactCode#,#paperPactCode#,#startTime#,#endTime#,#pactTerm#,#price#,#deposit#,#pay#,
+        #custody#,#payDays#,#firstPayTime#, #monthlyPayment#,#remark#,#signingTime#,#account#,
+        #accountName#,#bank#,#tel#,#openBank#,#state#,#dueState#,#dealState#,#cancelState#,#isDelete#,#isEffective#,
+        #ip#,NOW(),#modified#,#createName#,#modifiedName#)
+        <selectKey resultClass="long" keyProperty="id">
+            SELECT @@IDENTITY AS id
+        </selectKey>
+    </insert>
+    <select id="count" parameterClass="rentBaseQuery" resultClass="java.lang.Integer">
+            SELECT count(rent.id) 
+            FROM
+                pact_rent_base rent
+            LEFT JOIN pact_rent_room room ON rent.rent_pact_code = room.rent_pact_code
+             left join pact_rent_customer c on c.rent_pact_code=rent.rent_pact_code
+            LEFT JOIN (
+                SELECT
+                    belonger.user_pin dealUserPin,
+                    belonger.user_name dealUserName,
+                    belonger.dept_name dealDeptName,
+                    belonger.dept_code dealDeptCode,
+                    belonger.pact_code
+                FROM
+                    pact_common_belonger belonger
+                WHERE
+                    belonger.user_role = '签约管家'
+            ) belonger ON rent.rent_pact_code = belonger.pact_code
+            LEFT JOIN (
+                SELECT
+                    house.house_code,
+                    b.user_pin rentedUserPin,
+                    b.user_name rentedUserName,
+                    b.dept_name rentedDeptName,
+                    b.dept_code rentedDeptCode
+                FROM
+                    pact_common_belonger b
+                LEFT JOIN pact_purchase_house house ON b.pact_code = house.purchase_code
+                WHERE
+                    b.user_role = '租后管家'
+            ) rentedBelonger ON rentedBelonger.house_code = room.house_code
+            WHERE
+                rent.is_delete = 0 and rent.is_effective=0
+        <isNotEmpty  property="dueState" prepend="and">
+            rent.due_state=#dueState#
+        </isNotEmpty>
+        <isNotEmpty  property="cancelState" prepend="and">
+            rent.cancel_state=#cancelState#
+        </isNotEmpty>
+        <isNotEmpty  property="dealState" prepend="and">
+            rent.deal_state=#dealState#
+        </isNotEmpty>
+        <isNotEmpty  property="dealUserPin" prepend="and">
+            belonger.dealUserPin =#dealUserPin# 
+        </isNotEmpty>
+        <isNotEmpty  property="rentedUserPin" prepend="and">
+            rentedBelonger.rentedUserPin=#rentedUserPin#
+        </isNotEmpty>
+        <isNotEmpty  property="state" prepend="and">
+            rent.state=#state#
+        </isNotEmpty>
+        <isNotEmpty  property="expireStartTime" prepend="and">
+            <![CDATA[rent.end_time >= ]]>#expireStartTime#
+        </isNotEmpty>
+        <isNotEmpty  property="expireEndTime" prepend="and">
+            <![CDATA[rent.end_time < ]]>#expireEndTime#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="AND">
+                (
+                rent.rent_pact_code like
+                concat('%',#keyword#,'%') or
+                room.address like concat('%',#keyword#,'%') or
+                c.customer_code like concat('%',#keyword#,'%') or 
+                c.name like concat('%',#keyword#,'%') or 
+                c.tel like concat('%',#keyword#,'%') 
+                )
+        </isNotEmpty>
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                       rentedBelonger.rentedUserPin=#userPin#
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealUserPin=#userPin# 
+                        )
+                  </isEqual>
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                       rentedBelonger.rentedDeptCode=#deptCode#
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealDeptCode=#deptCode# 
+                        )
+                  </isEqual>
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                        rentedBelonger.rentedDeptCode in
+                        <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                        </iterate>
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealUserPin in
+                            <iterate property="pinList" open="(" close=")" conjunction=",">
+                                 #pinList[]#
+                            </iterate>
+                        )
+                  </isEqual>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                       rentedBelonger.rentedDeptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                         #deptList[]#
+                       </iterate>
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealDeptCode in 
+                            <iterate property="deptList" open="(" close=")" conjunction=",">
+                                 #deptList[]#
+                            </iterate>
+                        )
+                  </isEqual>
+             </isEqual>
+        </isNotEmpty>
+    </select>
+    <!-- 查询托出合同列表 -->
+    <select id="listByParam" parameterClass="rentBaseQuery" resultClass="rentBaseVO">
+			SELECT
+			    belonger.dealUserPin,
+			    belonger.dealUserName,
+			    belonger.dealDeptName,
+			    rentedBelonger.rentedUserPin,
+			    rentedBelonger.rentedUserName,
+			    rentedBelonger.rentedDeptName,
+			    rent.rent_pact_code AS rentPactCode,
+			    c.customer_code AS customerCode,
+			    room.room_code AS roomCode,
+			    room.address AS propertyAddress,
+			    room.rent_way as rentWay,
+			    rent.start_time AS startTime,
+			    rent.end_time AS endTime,
+			    rent.price,
+			    rent.custody,
+			    rent.pay,
+			    rent.signing_time AS signingTime,
+			    rent.gmt_create AS `create`,
+			    rent.deal_state AS dealState,
+			    rent.due_state AS dueState,
+			    rent.cancel_state AS cancelState,
+			    rent.state
+			FROM
+			    pact_rent_base rent
+			LEFT JOIN pact_rent_room room ON rent.rent_pact_code = room.rent_pact_code
+			 left join pact_rent_customer c on c.rent_pact_code=rent.rent_pact_code
+			LEFT JOIN (
+			    SELECT
+			        belonger.user_pin dealUserPin,
+                    belonger.user_name dealUserName,
+                    belonger.dept_name dealDeptName,
+                    belonger.dept_code dealDeptCode,
+                    belonger.pact_code
+			    FROM
+			        pact_common_belonger belonger
+			    WHERE
+			        belonger.user_role = '签约管家'
+			) belonger ON rent.rent_pact_code = belonger.pact_code
+			LEFT JOIN (
+			    SELECT
+			        house.house_code,
+			        b.user_pin rentedUserPin,
+                    b.user_name rentedUserName,
+                    b.dept_name rentedDeptName,
+                    b.dept_code rentedDeptCode
+			    FROM
+			        pact_common_belonger b
+			    LEFT JOIN pact_purchase_house house ON b.pact_code = house.purchase_code
+			    WHERE
+			        b.user_role = '租后管家'
+			) rentedBelonger ON rentedBelonger.house_code = room.house_code
+			WHERE
+			    rent.is_delete = 0 and rent.is_effective=0
+        <isNotEmpty  property="dueState" prepend="and">
+            rent.due_state=#dueState#
+        </isNotEmpty>
+        <isNotEmpty  property="cancelState" prepend="and">
+            rent.cancel_state=#cancelState#
+        </isNotEmpty>
+        <isNotEmpty  property="dealState" prepend="and">
+            rent.deal_state=#dealState#
+        </isNotEmpty>
+        <isNotEmpty  property="dealUserPin" prepend="and">
+            belonger.dealUserPin =#dealUserPin# 
+        </isNotEmpty>
+        <isNotEmpty  property="rentedUserPin" prepend="and">
+            rentedBelonger.rentedUserPin=#rentedUserPin#
+        </isNotEmpty>
+        <isNotEmpty  property="state" prepend="and">
+            rent.state=#state#
+        </isNotEmpty>
+        <isNotEmpty  property="expireStartTime" prepend="and">
+            <![CDATA[rent.end_time >= ]]>#expireStartTime#
+        </isNotEmpty>
+        <isNotEmpty  property="expireEndTime" prepend="and">
+            <![CDATA[rent.end_time < ]]>#expireEndTime#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="AND">
+                (
+                rent.rent_pact_code like
+                concat('%',#keyword#,'%') or
+                room.address like concat('%',#keyword#,'%') or
+                c.customer_code like concat('%',#keyword#,'%') or 
+                c.name like concat('%',#keyword#,'%') or 
+                c.tel like concat('%',#keyword#,'%') 
+                )
+        </isNotEmpty>
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                       rentedBelonger.rentedUserPin=#userPin#
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealUserPin=#userPin# 
+                        )
+                  </isEqual>
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                       rentedBelonger.rentedDeptCode=#deptCode#
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealDeptCode=#deptCode# 
+                        )
+                  </isEqual>
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                        rentedBelonger.rentedDeptCode in
+                        <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                        </iterate>
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealUserPin in
+                            <iterate property="pinList" open="(" close=")" conjunction=",">
+                                 #pinList[]#
+                            </iterate>
+                        )
+                  </isEqual>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                       rentedBelonger.rentedDeptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                         #deptList[]#
+                       </iterate>
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealDeptCode in 
+                            <iterate property="deptList" open="(" close=")" conjunction=",">
+                                 #deptList[]#
+                            </iterate>
+                        )
+                  </isEqual>
+             </isEqual>
+        </isNotEmpty>
+        ORDER BY rent.start_time DESC,rent.signing_time DESC,rent.gmt_create DESC LIMIT #startRow#,#pageSize#
+    </select>
+    <select id="getPermissions" parameterClass="rentBaseQuery" resultClass="rentBaseVO">
+            SELECT
+            rent.id,
+            rent.rent_pact_code AS rentPactCode
+            FROM
+                pact_rent_base rent
+            LEFT JOIN pact_rent_room room ON rent.rent_pact_code = room.rent_pact_code
+             left join pact_rent_customer c on c.rent_pact_code=rent.rent_pact_code
+            LEFT JOIN (
+                SELECT
+                    belonger.user_pin dealUserPin,
+                    belonger.user_name dealUserName,
+                    belonger.dept_name dealDeptName,
+                    belonger.dept_code dealDeptCode,
+                    belonger.pact_code
+                FROM
+                    pact_common_belonger belonger
+                WHERE
+                    belonger.user_role = '签约管家'
+            ) belonger ON rent.rent_pact_code = belonger.pact_code
+            LEFT JOIN (
+                SELECT
+                    house.house_code,
+                    b.user_pin rentedUserPin,
+                    b.user_name rentedUserName,
+                    b.dept_name rentedDeptName,
+                    b.dept_code rentedDeptCode
+                FROM
+                    pact_common_belonger b
+                LEFT JOIN pact_purchase_house house ON b.pact_code = house.purchase_code
+                WHERE
+                    b.user_role = '租后管家'
+            ) rentedBelonger ON rentedBelonger.house_code = room.house_code
+            WHERE
+                rent.is_delete = 0  and rent.rent_pact_code=#rentPactCode#  
+            <!-- 数据权限 -->
+            <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                       rentedBelonger.rentedUserPin=#userPin#
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealUserPin=#userPin# 
+                        )
+                  </isEqual>
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                       rentedBelonger.rentedDeptCode=#deptCode#
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealDeptCode=#deptCode# 
+                        )
+                  </isEqual>
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                        rentedBelonger.rentedDeptCode in
+                        <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                        </iterate>
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealUserPin in
+                            <iterate property="pinList" open="(" close=")" conjunction=",">
+                                 #pinList[]#
+                            </iterate>
+                        )
+                  </isEqual>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" >
+                  <!--  租后管家 -->
+                  <isEqual property="position" compareValue="1" prepend="and">
+                       rentedBelonger.rentedDeptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                         #deptList[]#
+                       </iterate>
+                  </isEqual>
+                  <!--  其他 -->
+                  <isEqual property="position" compareValue="2" prepend="and">
+                        (
+                            belonger.dealDeptCode in 
+                            <iterate property="deptList" open="(" close=")" conjunction=",">
+                                 #deptList[]#
+                            </iterate>
+                        )
+                  </isEqual>
+             </isEqual>
+        </isNotEmpty>
+        LIMIT 1
+    </select>
+    <!-- 托出编码查询托出合同基本信息 -->
+    <select id="getRentBaseByCode" parameterClass="java.lang.String" resultClass="rentBaseVO">
+        SELECT
+            rent.id,
+		    rent.rent_pact_code AS rentPactCode,
+		    rent.paper_pact_code AS paperPactCode,
+		    rent.start_time AS startTime,
+		    rent.end_time AS endTime,
+		    rent.pact_term AS pactTerm,
+		    rent.price,
+		    rent.deposit,
+		    rent.pay,
+		    rent.custody,
+		    rent.pay_days AS payDays,
+		    rent.first_pay_time AS firstPayTime,
+		    rent.monthly_payment AS monthlyPayment,
+		    rent.remark,
+		    rent.signing_time AS signingTime,
+		    rent.account,
+		    rent.account_name accountName,
+		    rent.bank,
+		    rent.tel,
+		    rent.open_bank AS openBank,
+		    rent.state,
+		    rent.due_state AS dueState,
+		    rent.deal_state AS dealState,
+		    rent.cancel_state AS cancelState,
+		    rent.is_delete AS isDelete,
+		    rent.is_effective AS isEffective,
+		    rent.ip,
+		    rent.gmt_create AS `create`,
+		    rent.gmt_modified AS modified,
+		    rent.gmt_create_name AS createName,
+		    rent.gmt_modified_name AS modifiedName,
+		    belonger.user_name AS dealName,
+		    belonger.user_pin AS dealPin,
+		    belonger.dept_name AS dealDeptName,
+		    belonger.dept_code AS dealDeptCode
+        FROM
+         <include refid="RentBase.tableName" /> rent 
+         LEFT JOIN pact_common_belonger belonger ON rent.rent_pact_code = belonger.pact_code
+        where is_delete = 0 and rent_pact_code=#rentPactCode#  and belonger.user_role='签约管家'
+        LIMIT 1
+    </select>
+     <!-- 修改托出合同审核状态-->
+    <update id="updateRentBaseStateByCode" parameterClass="rentBaseDO">
+         UPDATE
+        <include refid="RentBase.tableName" />
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#
+        <isNotNull property="state" prepend=",">
+            state=#state#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE rent_pact_code=#rentPactCode#
+    </update>
+    <!-- 修改托出合同基本信息-->
+    <update id="updateRentBaseByCode" parameterClass="rentBaseDO">
+         UPDATE
+        <include refid="RentBase.tableName" />
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        <isNotEmpty property="paperPactCode" prepend=",">
+            paper_pact_code=#paperPactCode#
+        </isNotEmpty>
+        <isNotEmpty property="startTime" prepend=",">
+            start_time=#startTime#
+        </isNotEmpty>
+        <isNotEmpty property="endTime" prepend=",">
+            end_time=#endTime#
+        </isNotEmpty>
+        <isNotEmpty property="pactTerm" prepend=",">
+            pact_term=#pactTerm#
+        </isNotEmpty>
+        <isNotEmpty property="price" prepend=",">
+            price=#price#
+        </isNotEmpty>
+        <isNotEmpty property="deposit" prepend=",">
+            deposit=#deposit#
+        </isNotEmpty>
+        <isNotEmpty property="pay" prepend=",">
+            pay=#pay#
+        </isNotEmpty>
+        <isNotEmpty property="custody" prepend=",">
+            custody=#custody#
+        </isNotEmpty>
+        <isNotEmpty property="payDays" prepend=",">
+            pay_days=#payDays#
+        </isNotEmpty>
+        <isNotEmpty property="firstPayTime" prepend=",">
+            first_pay_time=#firstPayTime#
+        </isNotEmpty>
+        <isNotEmpty property="monthlyPayment" prepend=",">
+            monthly_payment=#monthlyPayment#
+        </isNotEmpty>
+        <isNotEmpty property="remark" prepend=",">
+            remark=#remark#
+        </isNotEmpty>
+        <isNotEmpty property="signingTime" prepend=",">
+            signing_time=#signingTime#
+        </isNotEmpty>
+        <isNotEmpty property="account" prepend=",">
+            account=#account#
+        </isNotEmpty>
+        <isNotEmpty property="accountName" prepend=",">
+            account_name=#accountName#
+        </isNotEmpty>
+        <isNotEmpty property="bank" prepend=",">
+            bank=#bank#
+        </isNotEmpty>
+        <isNotEmpty property="openBank" prepend=",">
+            open_bank=#openBank#
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend=",">
+            state=#state#
+        </isNotEmpty>
+        <isNotEmpty property="dueState" prepend=",">
+            due_state=#dueState#
+        </isNotEmpty>
+        <isNotEmpty property="dealState" prepend=",">
+            deal_state=#dealState#
+        </isNotEmpty>
+        <isNotEmpty property="cancelState" prepend=",">
+            cancel_state=#cancelState#
+        </isNotEmpty>
+        <isNotEmpty property="isEffective" prepend=",">
+            is_effective=#isEffective#
+        </isNotEmpty>
+        WHERE rent_pact_code=#rentPactCode#
+    </update>
+    <!-- 删除托出合同基本信息-->
+    <update id="deleteRentBaseByCode" parameterClass="rentBaseDO">
+         UPDATE
+        <include refid="RentBase.tableName" />
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#,is_delete=1
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE rent_pact_code=#rentPactCode#
+    </update>
+    <!-- 根据客源编码查询审核通过的托出合同总数-->
+    <select id="countRentBaseByCustomer" parameterClass="rentBaseQuery" resultClass="java.lang.Integer"> 
+        SELECT
+		    count(r.id)
+		FROM
+		    pact_rent_base r
+		INNER JOIN pact_rent_customer c ON r.rent_pact_code = c.rent_pact_code
+		where r.is_delete=0 and r.state=3 and c.customer_code=#customerCode#
+    </select>
+    <!-- 根据托出合同编码查询托进租后管家  -->
+    <select id="getRentAfterBelonger" parameterClass="java.lang.String" resultClass="commonBelongerVO">
+         SELECT 
+	        rentedBelonger.id,
+	        rentedBelonger.userPin,
+	        rentedBelonger.userName,
+	        rentedBelonger.deptCode,
+	        rentedBelonger.deptName
+            FROM
+                pact_rent_base rent
+            LEFT JOIN pact_rent_room room ON rent.rent_pact_code = room.rent_pact_code
+            LEFT JOIN (
+                SELECT
+                    house.house_code,
+                    b.id,
+                    b.user_pin userPin,
+                    b.user_name userName,
+                    b.dept_code deptCode,
+                    b.dept_name  deptName
+                FROM
+                    pact_common_belonger b
+                LEFT JOIN pact_purchase_house house ON b.pact_code = house.purchase_code
+                WHERE
+                    b.user_role = '租后管家'
+            ) rentedBelonger ON rentedBelonger.house_code = room.house_code
+            WHERE
+                rent.is_delete = 0 and rent.rent_pact_code = #pactCode#
+           LIMIT 1
+    </select>
+    <!-- 查询录入托出合同超过24小时未提交审核的托出合同集合 -->
+    <select id="listUnsubmitted" parameterClass="rentBaseQuery" resultClass="rentBaseVO">
+         SELECT
+            rent.rent_pact_code AS rentPactCode,
+            dealBelonger.dealUserPin dealPin
+            FROM
+                pact_rent_base rent
+            LEFT JOIN (
+                SELECT
+                    belonger.user_pin dealUserPin,
+                    belonger.user_name dealUserName,
+                    belonger.dept_name dealDeptName,
+                    belonger.dept_code dealDeptCode,
+                    belonger.pact_code
+                FROM
+                    pact_common_belonger belonger
+                WHERE
+                    belonger.user_role = '签约管家'
+            ) dealBelonger ON rent.rent_pact_code = dealBelonger.pact_code
+            where rent.is_delete = 0 and rent.state = #state# 
+        AND TIMESTAMPDIFF(HOUR, rent.gmt_create, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, rent.gmt_create, NOW())  <![CDATA[ < ]]> 48 
+    </select>
+    <!-- 查询托出合同提交审核后超过24小时没有审核通过或驳回的托出合同集合 -->
+    <select id="listUnReview" parameterClass="rentBaseQuery" resultClass="rentBaseVO">
+          SELECT
+            rent.rent_pact_code AS rentPactCode,
+            dealBelonger.dealUserPin dealPin
+          FROM
+            pact_rent_base rent
+          LEFT JOIN (
+                SELECT
+                    belonger.user_pin dealUserPin,
+                    belonger.user_name dealUserName,
+                    belonger.dept_name dealDeptName,
+                    belonger.dept_code dealDeptCode,
+                    belonger.pact_code
+                FROM
+                    pact_common_belonger belonger
+                WHERE
+                    belonger.user_role = '签约管家'
+            ) dealBelonger ON rent.rent_pact_code = dealBelonger.pact_code
+          where rent.is_delete = 0 and rent.state = #state# 
+	      AND TIMESTAMPDIFF(HOUR, rent.gmt_modified, NOW())  <![CDATA[ >= ]]> 24
+	      AND TIMESTAMPDIFF(HOUR, rent.gmt_modified, NOW())  <![CDATA[ < ]]> 48 
+    </select>
+    <!--     条件查询托出合同集合 -->
+    <select id="listRentBaseByParam" parameterClass="rentBaseQuery" resultClass="rentBaseVO">
+          SELECT
+            rent.rent_pact_code AS rentPactCode,
+            rent.custody,
+            rent.pay,
+            rent.due_state dueState,
+            rent.deal_state dealState,
+            rent.cancel_state cancelState,
+            dealBelonger.dealUserPin dealPin,
+            room.room_code roomCode
+          FROM
+            pact_rent_base rent
+          LEFT JOIN (
+                SELECT
+                    belonger.user_pin dealUserPin,
+                    belonger.user_name dealUserName,
+                    belonger.dept_name dealDeptName,
+                    belonger.dept_code dealDeptCode,
+                    belonger.pact_code
+                FROM
+                    pact_common_belonger belonger
+                WHERE
+                    belonger.user_role = '签约管家'
+            ) dealBelonger ON rent.rent_pact_code = dealBelonger.pact_code
+            LEFT JOIN pact_rent_room room ON room.rent_pact_code = rent.rent_pact_code
+             where rent.is_delete = 0 
+            <isNotEmpty property="state" prepend="and">
+                rent.state = #state#
+            </isNotEmpty>
+            <isNotEmpty property="isEffective" prepend="and">
+                rent.is_effective = #isEffective#
+            </isNotEmpty>
+            <isNotEmpty property="dealState" prepend="and">
+                rent.deal_state = #dealState#
+            </isNotEmpty>
+            <isNotEmpty property="dealStateList" prepend="and">
+                rent.deal_state in 
+                <iterate property="dealStateList" open="(" close=")" conjunction=",">
+                     #dealStateList[]#
+                </iterate>
+            </isNotEmpty>
+            <isNotEmpty property="signingStartTime" >
+                AND rent.signing_time<![CDATA[ >= ]]> #signingStartTime#
+            </isNotEmpty>
+            <isNotEmpty property="signingEndTime" >
+               AND rent.signing_time <![CDATA[ < ]]> #signingEndTime#
+            </isNotEmpty>
+    </select>
+    <!--     查询托出合同到期时间距离今日还有60天的的托出合同  -->
+    <select id="listRentExpir" resultClass="rentBaseVO">
+        SELECT
+		    rent.rent_pact_code rentPactCode,
+		    rentedBelonger.userPin afterRentingPin,
+		    rentedBelonger.userName afterRentingName,
+		    rentedBelonger.deptCode afterRentingDeptCode,
+		    rentedBelonger.deptName afterRentingDeptName
+		FROM
+		    pact_rent_base rent
+		LEFT JOIN pact_rent_room room ON rent.rent_pact_code = room.rent_pact_code
+		LEFT JOIN (
+		    SELECT
+		        house.house_code,
+		        b.user_pin userPin ,
+		        b.user_name userName,
+		        b.dept_name deptCode,
+		        b.dept_code deptName
+		    FROM
+		        pact_common_belonger b
+		    LEFT JOIN pact_purchase_house house ON b.pact_code = house.purchase_code
+		    WHERE
+		        b.user_role = '租后管家'
+		) rentedBelonger ON rentedBelonger.house_code = room.house_code
+		WHERE
+		    rent.is_delete = 0
+		AND rent.state = 3
+		AND DATE_ADD(rent.end_time, INTERVAL 60 DAY) <![CDATA[ < ]]> NOW()
+		AND rent.end_time <![CDATA[ > ]]> DATE_SUB(NOW(),INTERVAL 60 DAY )
+    </select>
+</sqlMap>

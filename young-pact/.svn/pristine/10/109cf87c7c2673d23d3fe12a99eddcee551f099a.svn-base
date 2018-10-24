@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="PurchaseHouse">
+	<typeAlias alias="purchaseHouseDO" type="com.young.pact.domain.purchasehouse.PurchaseHouseDO" />
+	<typeAlias alias="purchaseHouseVO" type="com.young.pact.domain.purchasehouse.PurchaseHouseVO" />
+	<typeAlias alias="purchaseHouseQuery" type="com.young.pact.domain.purchasehouse.PurchaseHouseQuery" />
+	<sql id="allFields">
+	   id,purchase_code,house_code,address,build_acreage,use_acreage,orientation,source,room,parlour,toilet,
+	   kitchen,balcony,property_tel,house_nature,house_type,decoration,furniture,build_structure,build_year,
+	   expected_price,expected_lease,remark,current_floor,all_floor,property_right_info,share_owner_info,
+	   ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		pact_purchase_house
+	</sql>
+	
+	<!-- 保存托进合同房源信息 -->
+	<insert id="savePurchaseHouse" parameterClass="purchaseHouseDO">
+	    INSERT INTO
+        <include refid="PurchaseHouse.tableName" />
+        (purchase_code,house_code,address,build_acreage,use_acreage,orientation,source,room,parlour,toilet,
+       kitchen,balcony,property_tel,house_nature,house_type,decoration,furniture,build_structure,build_year,
+       expected_price,expected_lease,remark,current_floor,all_floor,property_right_info,share_owner_info,
+       ip,gmt_create,gmt_create_name)
+        values(#purchaseCode#,#houseCode#,#address#,#buildAcreage#,#useAcreage#,#orientation#,#source#,#room#,#parlour#,#toilet#,
+       #kitchen#,#balcony#,#propertyTel#,#houseNature#,#houseType#,#decoration#,#furniture#,#buildStructure#,#buildYear#,
+       #expectedPrice#,#expectedLease#,#remark#,#currentFloor#,#allFloor#,#propertyRightInfo#,#shareOwnerInfo#,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 根据托进合同编码查询托进合同房源信息 -->
+	<select id="getPurchaseHouse" parameterClass="java.lang.String" resultClass="purchaseHouseVO">
+	    SELECT
+		    id,purchase_code purchaseCode,house_code houseCode,address,build_acreage buildAcreage,use_acreage useAcreage,orientation,source,room,parlour,toilet,
+	        kitchen,balcony,property_tel propertyTel,house_nature houseNature,house_type houseType,decoration,furniture,build_structure buildStructure,build_year buildYear,
+	        expected_price expectedPrice,expected_lease expectedLease,remark,current_floor currentFloor,all_floor allFloor,property_right_info propertyRightInfo,share_owner_info shareOwnerInfo,
+	        gmt_create `create`,gmt_create_name createName
+		FROM
+		    <include refid="PurchaseHouse.tableName" />
+	    WHERE
+            purchase_code = #purchaseCode#
+        LIMIT 1
+	</select>
+    <!-- 	根据房源编码查询拖进合同是否存在  -->
+	<select id="getPurchaseHouseByParam" parameterClass="purchaseHouseQuery" resultClass="purchaseHouseVO">
+		SELECT
+		    *
+		FROM
+		    pact_purchase_base pur
+		LEFT JOIN pact_purchase_house house ON pur.purchase_code = house.purchase_code
+		WHERE
+	    house.house_code =#houseCode# and pur.is_delete=0 LIMIT 1
+	</select>
+	<!-- 根据托进合同编码删除托进合同房源信息 -->
+	<delete id="removePurchaseHouse" parameterClass="java.lang.String">
+	    DELETE FROM <include refid="PurchaseHouse.tableName" /> WHERE purchase_code = #purchaseCode#
+	</delete>
+	
+	<!-- 修改托进合同房源信息 -->
+	<update id="updatePurchaseHouse" parameterClass="purchaseHouseDO">
+	    UPDATE
+            <include refid="PurchaseHouse.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="address">address = #address#</isNotNull>
+        <isNotNull prepend="," property="buildAcreage">build_acreage = #buildAcreage#</isNotNull>
+        <isNotNull prepend="," property="useAcreage">use_acreage = #useAcreage#</isNotNull>
+        <isNotNull prepend="," property="orientation">orientation = #orientation#</isNotNull>
+        <isNotNull prepend="," property="source">source = #source#</isNotNull>
+        <isNotNull prepend="," property="room">room = #room#</isNotNull>
+        <isNotNull prepend="," property="parlour">parlour = #parlour#</isNotNull>
+        <isNotNull prepend="," property="toilet">toilet = #toilet#</isNotNull>
+        <isNotNull prepend="," property="kitchen">kitchen = #kitchen#</isNotNull>
+        <isNotNull prepend="," property="balcony">balcony = #balcony#</isNotNull>
+        <isNotNull prepend="," property="propertyTel">property_tel = #propertyTel#</isNotNull>
+        <isNotNull prepend="," property="houseNature">house_nature = #houseNature#</isNotNull>
+        <isNotNull prepend="," property="houseType">house_type = #houseType#</isNotNull>
+        <isNotNull prepend="," property="decoration">decoration = #decoration#</isNotNull>
+        <isNotNull prepend="," property="furniture">furniture = #furniture#</isNotNull>
+        <isNotNull prepend="," property="buildStructure">build_structure = #buildStructure#</isNotNull>
+        <isNotNull prepend="," property="buildYear">build_year = #buildYear#</isNotNull>
+        <isNotNull prepend="," property="expectedPrice">expected_price = #expectedPrice#</isNotNull>
+        <isNotNull prepend="," property="expectedLease">expected_lease = #expectedLease#</isNotNull>
+        <isNotNull prepend="," property="remark">remark = #remark#</isNotNull>
+        <isNotNull prepend="," property="currentFloor">current_floor = #currentFloor#</isNotNull>
+        <isNotNull prepend="," property="allFloor">all_floor = #allFloor#</isNotNull>
+        <isNotNull prepend="," property="propertyRightInfo">property_right_info = #propertyRightInfo#</isNotNull>
+        <isNotNull prepend="," property="shareOwnerInfo">share_owner_info = #shareOwnerInfo#</isNotNull>
+        <isNotNull prepend="," property="ip">ip = #ip#</isNotNull>
+        WHERE purchase_code = #purchaseCode#
+	</update>
+</sqlMap>

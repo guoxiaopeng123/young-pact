@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="DeclarePrice">
+    <typeAlias alias="declarePriceDO" type="com.young.pact.domain.declareprice.DeclarePriceDO" />
+    <typeAlias alias="declarePriceQuery" type="com.young.pact.domain.declareprice.DeclarePriceQuery" />
+    <typeAlias alias="declarePriceVO" type="com.young.pact.domain.declareprice.DeclarePriceVO" />
+    <sql id="allFields">
+        id,declare_code as declareCode,sell_price as sellPrice,buy_price AS buyPrice,
+        room_number AS roomNumber,
+        ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+    <sql id="tableName">
+        pact_declare_price
+    </sql>
+    
+    <!-- 保存申报价格 -->
+    <insert id="saveDeclarePrice" parameterClass="declarePriceDO" >
+        insert into
+        <include refid="DeclarePrice.tableName" />
+        (declare_code,sell_price,buy_price,room_number,
+        ip,gmt_create,gmt_create_name)
+        values(#declareCode#,#sellPrice#,#buyPrice#,#roomNumber#,#ip#,NOW(),#createName#)
+    </insert>
+    <!-- 根据申报编码查询申报价格集合 -->
+    <select id="listDeclarePriceByDecCode" parameterClass="java.lang.String" resultClass="declarePriceVO">
+        select 
+        <include refid="DeclarePrice.allFields" />
+        from 
+        <include refid="DeclarePrice.tableName" />
+        where 
+        declare_code =  #declareCode#
+    </select>
+</sqlMap>

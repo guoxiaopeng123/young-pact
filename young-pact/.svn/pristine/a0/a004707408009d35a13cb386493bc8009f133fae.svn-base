@@ -1,0 +1,116 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Rentcommonowner">
+    <!-- 实体类别名 -->
+    <typeAlias alias="rentCommonOwnerDO" type="com.young.pact.domain.rentcommonowner.RentCommonOwnerDO" />
+    <typeAlias alias="rentCommonOwnerQuery" type="com.young.pact.domain.rentcommonowner.RentCommonOwnerQuery" />
+    <typeAlias alias="rentCommonOwnerVO" type="com.young.pact.domain.rentcommonowner.RentCommonOwnerVO" />
+    <!-- 所有字段 -->
+    <sql id="allFields">
+       id,renter_code as renterCode,name,sex,tel,spare_tel as spareTel,id_type as idType,
+       id_code as idCode,birthday,address,wechat,native as nativePlance,marital_status as maritalStatus,
+       label,monthly_income as monthlyIncome,card_positive_url as cardPositiveUrl,
+       card_back_url as cardBackUrl,profession,company_name as companyName,company_address as companyAddress,
+       ip,gmt_create as `create`,gmt_modified as modified,gmt_create_name as createName,gmt_modified_name as modifiedName   
+    </sql>
+    <!-- 表名 -->
+    <sql id="tableName">
+        pact_rent_common_owner
+    </sql>
+    <!-- 插入租客共同居住人基本信息 -->
+    <insert id="savaCommonOwner" parameterClass="rentCommonOwnerDO">
+        INSERT INTO
+        <include refid="Rentcommonowner.tableName" />
+        (renter_code,name,sex,tel,spare_tel,id_type,id_code,birthday,address,wechat,native,marital_status,
+         label,monthly_income,card_positive_url,card_back_url,profession,company_name,company_address,
+         ip,gmt_create,gmt_modified,gmt_create_name,gmt_modified_name)
+        VALUES
+        (#renterCode#,#name#,#sex#,#tel#,#spareTel#,#idType#,#idCode#,#birthday#,#address#,#wechat#,
+        #nativePlance#,#maritalStatus#,#label#,#monthlyIncome#,#cardPositiveUrl#,#cardBackUrl#,#profession#,
+        #companyName#,#companyAddress#,#ip#,NOW(),#modified#,#createName#,#modifiedName#)
+        <selectKey resultClass="long" keyProperty="id">
+            SELECT @@IDENTITY AS id
+        </selectKey>
+    </insert>
+     <!-- 根据托出合同编码查询托出租客共同居住人-->
+    <select id="listCommonOwnerByRenterCode" parameterClass="java.lang.String" resultClass="rentCommonOwnerVO">
+        select 
+             <include refid="Rentcommonowner.allFields"/>
+        FROM
+             <include refid="Rentcommonowner.tableName"/> 
+        WHERE
+             renter_code = #renterCode#                    
+    </select>
+     <!-- 根据租客编码和唯一标识修改租客共同居住人-->
+    <update id="updateCommonOwner" parameterClass="rentCommonOwnerDO" >
+        UPDATE
+        <include refid="Rentcommonowner.tableName"/> 
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="ip">
+             ip = #ip#
+        </isNotNull>
+        <isNotEmpty property="name" prepend=",">
+             name=#name#
+        </isNotEmpty>
+        <isNotEmpty property="sex" prepend=",">
+             sex=#sex#
+        </isNotEmpty>
+        <isNotEmpty property="tel" prepend=",">
+             tel=#tel#
+        </isNotEmpty>
+        <isNotEmpty property="spareTel" prepend=",">
+             spare_tel=#spareTel#
+        </isNotEmpty>
+        <isNotEmpty property="idType" prepend=",">
+             id_type=#idType#
+        </isNotEmpty>
+        <isNotEmpty property="idCode" prepend=",">
+             id_code=#idCode#
+        </isNotEmpty>
+        <isNotEmpty property="birthday" prepend=",">
+             birthday=#birthday#
+        </isNotEmpty>
+        <isNotEmpty property="address" prepend=",">
+             address=#address#
+        </isNotEmpty>
+        <isNotEmpty property="wechat" prepend=",">
+             wechat=#wechat#
+        </isNotEmpty>
+        <isNotEmpty property="nativePlance" prepend=",">
+             native=#nativePlance#
+        </isNotEmpty>
+        <isNotEmpty property="maritalStatus" prepend=",">
+             marital_status=#maritalStatus#
+        </isNotEmpty>
+        <isNotEmpty property="label" prepend=",">
+             label=#label#
+        </isNotEmpty>
+        <isNotEmpty property="monthlyIncome" prepend=",">
+             monthly_income=#monthlyIncome#
+        </isNotEmpty>
+        <isNotEmpty property="cardPositiveUrl" prepend=",">
+             card_positive_url=#cardPositiveUrl#
+        </isNotEmpty>
+        <isNotEmpty property="cardBackUrl" prepend=",">
+             card_back_url=#cardBackUrl#
+        </isNotEmpty>
+        <isNotEmpty property="profession" prepend=",">
+             profession=#profession#
+        </isNotEmpty>
+        <isNotEmpty property="companyName" prepend=",">
+             company_name=#companyName#
+        </isNotEmpty>
+        <isNotEmpty property="companyAddress" prepend=",">
+             company_address=#companyAddress#
+        </isNotEmpty>
+        WHERE renter_code=#renterCode# and id=#id#
+    </update>
+    <!-- 根据托出合同编码删除租客共同居住人-->
+    <delete id="removeCommonOwner" parameterClass="java.lang.String">
+        DELETE FROM 
+            <include refid="Rentcommonowner.tableName" /> 
+        WHERE renter_code=#renterCode#
+    </delete>
+</sqlMap>

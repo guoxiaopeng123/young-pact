@@ -1,0 +1,1473 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="FinanceReceiptPay">
+	<typeAlias alias="financeReceiptPayDO" type="com.young.pact.domain.financereceiptpay.FinanceReceiptPayDO" />
+	<typeAlias alias="financeReceiptPayVO" type="com.young.pact.domain.financereceiptpay.FinanceReceiptPayVO" />
+	<typeAlias alias="financeReceiptPayQuery" type="com.young.pact.domain.financereceiptpay.FinanceReceiptPayQuery" />
+	<sql id="allFields">
+	    id,pid,type,pact_code,pact_type,income_expend_type,cost_type,cost_subject,cost_amount,start_time,end_time,
+	    describe,cost_time,house_code,room_code,address,personnel_code,customer_role,payee_object,name,tel,account,
+	    bank,open_bank,cost_way,cost_state,remark,overdue_day,is_delete,is_valid,ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		finance_receipt_pay
+	</sql>
+	
+	<!-- 保存收支-->
+	<insert id="saveFinanceReceiptPay" parameterClass="financeReceiptPayDO">
+	    INSERT INTO
+        <include refid="FinanceReceiptPay.tableName" />
+        (pid,type,pact_code,pact_type,income_expend_type,cost_type,cost_subject,cost_amount,start_time,end_time,
+        `describe`,cost_time,house_code,room_code,address,personnel_code,customer_role,payee_object,`name`,tel,account,
+        bank,open_bank,cost_way,cost_state,remark,overdue_day,is_delete,is_valid,ip,gmt_create,gmt_create_name)
+        values(#pid#,#type#,#pactCode#,#pactType#,#incomeExpendType#,#costType#,#costSubject#,#costAmount#,#startTime#,#endTime#,
+        #describe#,#costTime#,#houseCode#,#roomCode#,#address#,#personnelCode#,#customerRole#,#payeeObject#,#name#,#tel#,#account#,
+        #bank#,#openBank#,#costWay#,#costState#,#remark#,#overdueDay#,0
+        <isNotEmpty property="isValid" prepend=",">
+           #isValid#
+        </isNotEmpty>
+        <isEmpty property="isValid" prepend=",">
+           0
+        </isEmpty>
+        ,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 根据合同编码删除收支信息-逻辑删除 -->
+	<update id="removeFinanceReceiptPay" parameterClass="financeReceiptPayDO">
+	    UPDATE
+            <include refid="FinanceReceiptPay.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="isDelete">
+            is_delete = #isDelete#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE pact_code = #pactCode#
+	</update>
+	
+	<!-- 根据合同编码,创建时间,收支状态删除收支信息-逻辑删除 -->
+	<update id="delFinanceReceiptPay" parameterClass="financeReceiptPayDO">
+	    UPDATE
+            <include refid="FinanceReceiptPay.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="isDelete">
+            is_delete = #isDelete#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE 
+        	pact_code = #pactCode# AND is_delete = 0
+        and
+        	 <![CDATA[cost_time >= #costTime#]]>
+	</update>
+	
+	<!-- 根据合同编码查询收支集合 -->
+	<select id="listFinanceReceiptPay" parameterClass="java.lang.String" resultClass="financeReceiptPayVO">
+	    SELECT
+		    id,pid,type,pact_code pactCode,pact_type pactType,income_expend_type incomeExpendType,cost_type costType,cost_subject costSubject,cost_amount costAmount,start_time startTime,end_time endTime,
+	        `describe`,cost_time costTime,house_code houseCode,room_code roomCode,address,personnel_code personnelCode,customer_role customerRole,payee_object payeeObject,`name`,tel,account,
+	        bank,open_bank openBank,cost_way costWay,cost_state costState,remark,overdue_day overdueDay,is_delete isDelete,ip,gmt_create `create`,gmt_create_name createName
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" />
+		WHERE
+		    is_delete = 0 AND pact_code = #pactCode#
+	</select>
+	
+	<!-- 根据条件查询收支集合 TODO-->
+	<select id="listFinanceReceiptPayDO" parameterClass="financeReceiptPayQuery" resultClass="financeReceiptPayVO">
+	    SELECT
+		    id,pid,type,pact_code pactCode,pact_type pactType,income_expend_type incomeExpendType,cost_type costType,cost_subject costSubject,cost_amount costAmount,start_time startTime,end_time endTime,
+	        `describe`,cost_time costTime,house_code houseCode,room_code roomCode,address,personnel_code personnelCode,customer_role customerRole,payee_object payeeObject,`name`,tel,account,
+	        bank,open_bank openBank,cost_way costWay,cost_state costState,remark,overdue_day overdueDay,is_delete isDelete,ip,gmt_create `create`,gmt_create_name createName
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" />
+		WHERE
+		    is_delete = 0 
+		<isNotEmpty property="pactCode" prepend="and">
+           pact_code=#pactCode#
+       </isNotEmpty>
+       <isNotEmpty property="costTimeStr" prepend="and">
+           <![CDATA[cost_time >= ]]>#costTimeStr#
+       </isNotEmpty>
+	</select>
+    <!-- 	根据合同编码获取收款人信息 -->
+	<select id="getPayeeReceiptPayByPactCode" parameterClass="financeReceiptPayQuery" resultClass="financeReceiptPayVO">
+	   select name,tel,account,bank,open_bank as openBank,house_code as houseCode,room_code as roomCode,address,personnel_code as personnelCode,customer_role as customerRole,payee_object as  payeeObject
+	   
+	   FROM 
+	       <include refid="FinanceReceiptPay.tableName" />
+	   WHERE
+	   is_delete=0 AND pact_code = #pactCode#
+	   <isNotEmpty property="pactType" prepend="and">
+	       pact_type=#pactType#
+	   </isNotEmpty>
+	   <isNotEmpty property="payeeObject" prepend="and">
+           payee_object=#payeeObject#
+       </isNotEmpty>
+       <isNotEmpty property="type" prepend="and">
+           type=#type#
+       </isNotEmpty>
+       LIMIT 1
+	</select>
+	
+	
+	<!-- 删除 不包含 收支集合数据 的收支！！-逻辑删除 -->
+	<update id="removeNotFinanceReceiptPay" parameterClass="java.util.Map">
+	    UPDATE
+            <include refid="FinanceReceiptPay.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#,is_delete = 1
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE
+            is_delete = 0 AND id IN (
+	            SELECT fr3.id FROM
+	            (
+				    SELECT fr1.id FROM
+			            <include refid="FinanceReceiptPay.tableName" /> fr1
+			        WHERE
+			            fr1.pact_code = #pactCode#
+			        AND NOT EXISTS (
+			            SELECT
+			                fr2.id
+			            FROM
+			                <include refid="FinanceReceiptPay.tableName" /> fr2
+			            WHERE
+			                fr1.id = fr2.id AND fr2.pact_code = #pactCode#
+			            AND fr2.id IN 
+			            <isNotEmpty property="financeReceiptPayList">
+			                <iterate open="(" close=")" conjunction="," property="financeReceiptPayList">
+			                    #financeReceiptPayList[].id#
+			                </iterate>
+			            </isNotEmpty>
+			            <isEmpty property="financeReceiptPayList">
+			               (0)
+			            </isEmpty>
+			        )
+	            ) fr3
+            )
+	</update>
+	
+	<!-- 修改收支 -->
+	<update id="updateFinanceReceiptPay" parameterClass="financeReceiptPayDO">
+	    UPDATE
+            <include refid="FinanceReceiptPay.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="incomeExpendType">income_expend_type = #incomeExpendType#</isNotNull>
+        <isNotNull prepend="," property="costType">cost_type = #costType#</isNotNull>
+        <isNotNull prepend="," property="costSubject">cost_subject = #costSubject#</isNotNull>
+        <isNotNull prepend="," property="costAmount">cost_amount = #costAmount#</isNotNull>
+        <isNotNull prepend="," property="startTime">start_time = #startTime#</isNotNull>
+        <isNotNull prepend="," property="endTime">end_time = #endTime#</isNotNull>
+        <isNotNull prepend="," property="describe">`describe` = #describe#</isNotNull>
+        <isNotNull prepend="," property="costTime">cost_time = #costTime#</isNotNull>
+        <isNotNull prepend="," property="houseCode">house_code = #houseCode#</isNotNull>
+        <isNotNull prepend="," property="roomCode">room_code = #roomCode#</isNotNull>
+        <isNotNull prepend="," property="address">address = #address#</isNotNull>
+        <isNotNull prepend="," property="personnelCode">personnel_code = #personnelCode#</isNotNull>
+        <isNotNull prepend="," property="customerRole">customer_role = #customerRole#</isNotNull>
+        <isNotNull prepend="," property="payeeObject">payee_object = #payeeObject#</isNotNull>
+        <isNotNull prepend="," property="name">`name` = #name#</isNotNull>
+        <isNotNull prepend="," property="tel">tel = #tel#</isNotNull>
+        <isNotNull prepend="," property="account">account = #account#</isNotNull>
+        <isNotNull prepend="," property="bank">bank = #bank#</isNotNull>
+        <isNotNull prepend="," property="openBank">open_bank = #openBank#</isNotNull>
+        <isNotNull prepend="," property="costWay">cost_way = #costWay#</isNotNull>
+        <isNotNull prepend="," property="costState">cost_state = #costState#</isNotNull>
+        <isNotNull prepend="," property="remark">remark = #remark#</isNotNull>
+        <isNotNull prepend="," property="ip">ip = #ip#</isNotNull>
+        WHERE id = #id# AND is_delete = 0 AND pact_code = #pactCode#
+	</update>
+	
+	<!-- 收支管理列表-全部,分页总个数 -->
+	<select id="countAllFinanceReceiptPay" parameterClass="financeReceiptPayQuery" resultClass="int">
+	    SELECT
+            COUNT(*)
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+        LEFT JOIN pact_purchase_house house ON house.house_code = pay.house_code
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        ) belongerContract ON belongerContract.pactCode = pay.pact_code
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode, 
+                belonger.user_pin userPin, 
+                belonger.user_name userName, 
+                belonger.dept_code deptCode, 
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '租后管家'
+        ) belongerRent ON belongerRent.pactCode = pay.pact_code
+        WHERE
+            pay.is_delete = 0 AND pay.is_valid = 1
+            <isNotEmpty property="pactType" prepend="AND">
+                pay.pact_type = #pactType#
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMin" prepend="AND">
+                <![CDATA[pay.cost_time >= #costTimeMin#]]>
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMax" prepend="AND">
+                <![CDATA[pay.cost_time <= #costTimeMax#]]>
+            </isNotEmpty>
+            <isNotEmpty property="type" prepend="AND">
+                pay.type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="costState" prepend="AND">
+                pay.cost_state = #costState#
+            </isNotEmpty>
+            <isNotEmpty property="payeeObject" prepend="AND">
+                pay.payee_object = #payeeObject#
+            </isNotEmpty>
+            <isNotEmpty property="decoration" prepend="AND">
+                house.decoration = #decoration#
+            </isNotEmpty>
+            <isNotEmpty property="deptCode" prepend="AND">
+                (belongerContract.deptCode = #deptCode# OR belongerRent.deptCode = #deptCode#)
+            </isNotEmpty>
+            <dynamic prepend="AND" open="(" close=")">
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.pact_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.address LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+            </dynamic>
+	        <!-- 数据权限 -->
+	        <isNotEmpty property="scope" >
+	             <!--  本人 -->
+	             <isEqual property="scope" compareValue="1" >
+                     <!--租后管家 -->
+	                 <isEqual property="position" compareValue="1" prepend="and">
+	                   belongerRent.userPin = #userPin#
+	                 </isEqual>
+	                 <isEqual property="position" compareValue="2" prepend="and">
+                       (
+                           belongerContract.userPin=#userPin#
+                        )
+                     </isEqual>
+	             </isEqual>
+	             <!--  本部门 -->
+	             <isEqual property="scope" compareValue="2" >
+	                 <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode in 
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                         #deptList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in 
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                         #deptList[]#
+                       </iterate>
+                     </isEqual>
+	             </isEqual>
+	             <!--  本人及下属 -->
+	             <isEqual property="scope" compareValue="3" >
+	                 <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+	             </isEqual>
+	             <!--  本部门及下属部门 -->
+	             <isEqual property="scope" compareValue="4" >
+	                 <!--租后管家 -->
+	                 <isEqual property="position" compareValue="1" prepend="and">
+	                   belongerRent.deptCode in
+	                   <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                       </iterate>
+	                 </isEqual>
+	                 <isEqual property="position" compareValue="2" prepend="and">
+	                   belongerContract.deptCode in
+	                   <iterate property="deptList" open="(" close=")" conjunction=",">
+	                         #deptList[]#
+	                   </iterate>
+	                 </isEqual>
+	             </isEqual>
+	        </isNotEmpty>
+	</select>
+	
+	<!-- 收支管理列表-全部 -->
+	<select id="listAllFinanceReceiptPay" parameterClass="financeReceiptPayQuery" resultClass="financeReceiptPayVO">
+	    SELECT
+		    pay.id,pay.pact_code pactCode,pay.pact_type pactType,pay.address,pay.cost_state costState,pay.type,pay.cost_type costType,
+		    pay.payee_object payeeObject,pay.`name`,pay.cost_amount costAmount,pay.cost_time costTime,pay.overdue_day overdueDay,pay.start_time startTime,pay.end_time endTime,
+		    pay.`describe`,belongerRent.userName serviceUserName,belongerRent.deptName serviceDeptName,
+		    belongerContract.userName belongerUserName,belongerContract.deptName belongerDeptName,house.decoration
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" /> pay
+		LEFT JOIN pact_purchase_house house ON house.house_code = pay.house_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode, belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,  belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '维护人'
+		) belongerContract ON belongerContract.pactCode = pay.pact_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode, belonger.user_pin userPin, belonger.user_name userName, belonger.dept_code deptCode,  belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '租后管家'
+		) belongerRent ON belongerRent.pactCode = pay.pact_code
+		WHERE
+		    pay.is_delete = 0 AND pay.is_valid = 1
+		    <isNotEmpty property="pactType" prepend="AND">
+                pay.pact_type = #pactType#
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMin" prepend="AND">
+                <![CDATA[pay.cost_time >= #costTimeMin#]]>
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMax" prepend="AND">
+                <![CDATA[pay.cost_time <= #costTimeMax#]]>
+            </isNotEmpty>
+		    <isNotEmpty property="type" prepend="AND">
+                pay.type = #type#
+            </isNotEmpty>
+		    <isNotEmpty property="costState" prepend="AND">
+                pay.cost_state = #costState#
+            </isNotEmpty>
+		    <isNotEmpty property="payeeObject" prepend="AND">
+                pay.payee_object = #payeeObject#
+            </isNotEmpty>
+		    <isNotEmpty property="decoration" prepend="AND">
+                house.decoration = #decoration#
+            </isNotEmpty>
+		    <isNotEmpty property="deptCode" prepend="AND">
+                (belongerContract.deptCode = #deptCode# OR belongerRent.deptCode = #deptCode#)
+            </isNotEmpty>
+            <dynamic prepend="AND" open="(" close=")">
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.pact_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.address LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+            </dynamic>
+            <!-- 数据权限 -->
+            <isNotEmpty property="scope" >
+                 <!--  本人 -->
+                 <isEqual property="scope" compareValue="1" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin = #userPin#
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       (
+                           belongerContract.userPin=#userPin#
+                        )
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门 -->
+                 <isEqual property="scope" compareValue="2" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode in
+                           <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                           </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                           belongerContract.deptCode in 
+                           <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                           </iterate>
+                     </isEqual>
+                 </isEqual>
+                 <!--  本人及下属 -->
+                 <isEqual property="scope" compareValue="3" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门及下属部门 -->
+                 <isEqual property="scope" compareValue="4" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+            </isNotEmpty>
+        ORDER BY pay.gmt_create DESC LIMIT #startRow#,#pageSize#
+	</select>
+	
+	<!-- 收支管理列表-应收、应支,分页总个数 -->
+	<select id="countReceivFinanceReceiptPay" parameterClass="financeReceiptPayQuery" resultClass="int">
+	    SELECT
+            COUNT(*)
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+        LEFT JOIN pact_purchase_house house ON house.house_code = pay.house_code
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode, belonger.user_pin userPin,belonger.user_name userName, belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        ) belongerContract ON belongerContract.pactCode = pay.pact_code
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode, belonger.user_pin userPin, belonger.user_name userName, belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '租后管家'
+        ) belongerRent ON belongerRent.pactCode = pay.pact_code
+        WHERE
+            pay.is_delete = 0 AND pay.is_valid = 1
+            <isNotEmpty property="pactType" prepend="AND">
+                pay.pact_type = #pactType#
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMin" prepend="AND">
+                <![CDATA[pay.cost_time >= #costTimeMin#]]>
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMax" prepend="AND">
+                <![CDATA[pay.cost_time <= #costTimeMax#]]>
+            </isNotEmpty>
+            <isNotEmpty property="type" prepend="AND">
+                pay.type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="costState" prepend="AND">
+                pay.cost_state = #costState#
+            </isNotEmpty>
+            <isNotEmpty property="payeeObject" prepend="AND">
+                pay.payee_object = #payeeObject#
+            </isNotEmpty>
+            <dynamic prepend="AND" open="(" close=")">
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.pact_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.address LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+            </dynamic>
+            <!-- 数据权限 -->
+            <isNotEmpty property="scope" >
+                 <!--  本人 -->
+                 <isEqual property="scope" compareValue="1" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin = #userPin#
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       (
+                           belongerContract.userPin=#userPin#
+                        )
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门 -->
+                 <isEqual property="scope" compareValue="2" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode in
+                           <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                           </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                           belongerContract.deptCode in 
+                           <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                           </iterate>
+                     </isEqual>
+                 </isEqual>
+                 <!--  本人及下属 -->
+                 <isEqual property="scope" compareValue="3" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门及下属部门 -->
+                 <isEqual property="scope" compareValue="4" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+            </isNotEmpty>
+	</select>
+	
+	<!-- 收支管理列表-应收、应支 -->
+	<select id="listReceivFinanceReceiptPay" parameterClass="financeReceiptPayQuery" resultClass="financeReceiptPayVO">
+	    SELECT
+		    pay.id,pay.pact_code pactCode,pay.pact_type pactType,pay.address,pay.cost_state costState,pay.cost_type costType,
+		    pay.payee_object payeeObject,pay.`name`,pay.cost_amount costAmount,pay.cost_time costTime,pay.overdue_day overdueDay,
+		    pay.start_time startTime,pay.end_time endTime,pay.`describe`,belongerRent.userName serviceUserName,
+		    belongerRent.deptName serviceDeptName,belongerContract.userName dealUserName,belongerContract.deptName dealDeptName,house.decoration
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" /> pay
+		LEFT JOIN pact_purchase_house house ON house.house_code = pay.house_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode, belonger.user_pin userPin, belonger.user_name userName, belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '维护人'
+		) belongerContract ON belongerContract.pactCode = pay.pact_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode, belonger.user_pin userPin, belonger.user_name userName,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '租后管家'
+		) belongerRent ON belongerRent.pactCode = pay.pact_code
+		WHERE
+		    pay.is_delete = 0 AND pay.is_valid = 1
+		    <isNotEmpty property="pactType" prepend="AND">
+                pay.pact_type = #pactType#
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMin" prepend="AND">
+                <![CDATA[pay.cost_time >= #costTimeMin#]]>
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMax" prepend="AND">
+                <![CDATA[pay.cost_time <= #costTimeMax#]]>
+            </isNotEmpty>
+            <isNotEmpty property="type" prepend="AND">
+                pay.type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="costState" prepend="AND">
+                pay.cost_state = #costState#
+            </isNotEmpty>
+            <isNotEmpty property="payeeObject" prepend="AND">
+                pay.payee_object = #payeeObject#
+            </isNotEmpty>
+            <dynamic prepend="AND" open="(" close=")">
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.pact_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.address LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+            </dynamic>
+            <!-- 数据权限 -->
+            <isNotEmpty property="scope" >
+                 <!--  本人 -->
+                 <isEqual property="scope" compareValue="1" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin = #userPin#
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       (
+                           belongerContract.userPin=#userPin#
+                        )
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门 -->
+                 <isEqual property="scope" compareValue="2" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode=#deptCode#
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                           belongerContract.deptCode=#deptCode#
+                     </isEqual>
+                 </isEqual>
+                 <!--  本人及下属 -->
+                 <isEqual property="scope" compareValue="3" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门及下属部门 -->
+                 <isEqual property="scope" compareValue="4" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+            </isNotEmpty>
+        ORDER BY pay.gmt_create DESC LIMIT #startRow#,#pageSize#
+	</select>
+	
+	<!-- 收支管理列表-实收、应支,分页总个数 -->
+	<select id="countNetFinanceReceiptPay" parameterClass="financeReceiptPayQuery" resultClass="int">
+	    SELECT
+            COUNT(*)
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+        LEFT JOIN pact_purchase_house house ON house.house_code = pay.house_code
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,  belonger.user_pin userPin, belonger.user_name userName, belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        ) belongerContract ON belongerContract.pactCode = pay.pact_code
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode, belonger.user_pin userPin, belonger.user_name userName, belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '租后管家'
+        ) belongerRent ON belongerRent.pactCode = pay.pact_code
+        WHERE
+            pay.is_delete = 0 AND pay.is_valid = 1
+            <isNotEmpty property="pactType" prepend="AND">
+                pay.pact_type = #pactType#
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMin" prepend="AND">
+                <![CDATA[pay.cost_time >= #costTimeMin#]]>
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMax" prepend="AND">
+                <![CDATA[pay.cost_time <= #costTimeMax#]]>
+            </isNotEmpty>
+            <isNotEmpty property="overdueDayMin" prepend="AND">
+                <![CDATA[pay.overdue_day >= #overdueDayMin#]]>
+            </isNotEmpty>
+            <isNotEmpty property="overdueDayMax" prepend="AND">
+                <![CDATA[pay.overdue_day <= #overdueDayMax#]]>
+            </isNotEmpty>
+            <isNotEmpty property="type" prepend="AND">
+                pay.type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="costState" prepend="AND">
+                pay.cost_state = #costState#
+            </isNotEmpty>
+            <isNotEmpty property="payeeObject" prepend="AND">
+                pay.payee_object = #payeeObject#
+            </isNotEmpty>
+            <dynamic prepend="AND" open="(" close=")">
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.pact_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.address LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+            </dynamic>
+            <!-- 数据权限 -->
+            <isNotEmpty property="scope" >
+                 <!--  本人 -->
+                 <isEqual property="scope" compareValue="1" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin = #userPin#
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       (
+                           belongerContract.userPin=#userPin#
+                        )
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门 -->
+                 <isEqual property="scope" compareValue="2" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode=#deptCode#
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                           belongerContract.deptCode=#deptCode#
+                     </isEqual>
+                 </isEqual>
+                 <!--  本人及下属 -->
+                 <isEqual property="scope" compareValue="3" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门及下属部门 -->
+                 <isEqual property="scope" compareValue="4" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+            </isNotEmpty>
+	</select>
+	
+	<!-- 收支管理列表-实收、应支 -->
+	<select id="listNetFinanceReceiptPay" parameterClass="financeReceiptPayQuery" resultClass="financeReceiptPayVO">
+	    SELECT
+		    pay.id,pay.pact_code pactCode,pay.pact_type pactType,pay.address,pay.cost_state costState,pay.cost_type costType,
+		    pay.payee_object payeeObject,pay.`name`,pay.cost_amount costAmount,pay.cost_time costTime,pay.overdue_day overdueDay,
+		    pay.start_time startTime,pay.end_time endTime,pay.`describe`,belongerRent.userName serviceUserName,belongerRent.deptName serviceDeptName,
+		    belongerContract.userName dealUserName,belongerContract.deptName dealDeptName,house.decoration
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" /> pay
+		LEFT JOIN pact_purchase_house house ON house.house_code = pay.house_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '维护人'
+		) belongerContract ON belongerContract.pactCode = pay.pact_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '租后管家'
+		) belongerRent ON belongerRent.pactCode = pay.pact_code
+		WHERE
+		    pay.is_delete = 0 AND pay.is_valid = 1
+		    <isNotEmpty property="pactType" prepend="AND">
+                pay.pact_type = #pactType#
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMin" prepend="AND">
+                <![CDATA[pay.cost_time >= #costTimeMin#]]>
+            </isNotEmpty>
+            <isNotEmpty property="costTimeMax" prepend="AND">
+                <![CDATA[pay.cost_time <= #costTimeMax#]]>
+            </isNotEmpty>
+            <isNotEmpty property="overdueDayMin" prepend="AND">
+                <![CDATA[pay.overdue_day >= #overdueDayMin#]]>
+            </isNotEmpty>
+            <isNotEmpty property="overdueDayMax" prepend="AND">
+                <![CDATA[pay.overdue_day <= #overdueDayMax#]]>
+            </isNotEmpty>
+            <isNotEmpty property="type" prepend="AND">
+                pay.type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="costState" prepend="AND">
+                pay.cost_state = #costState#
+            </isNotEmpty>
+            <isNotEmpty property="payeeObject" prepend="AND">
+                pay.payee_object = #payeeObject#
+            </isNotEmpty>
+            <dynamic prepend="AND" open="(" close=")">
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.pact_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    pay.address LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+            </dynamic>
+            <!-- 数据权限 -->
+            <isNotEmpty property="scope" >
+                 <!--  本人 -->
+                 <isEqual property="scope" compareValue="1" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin = #userPin#
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       (
+                           belongerContract.userPin=#userPin#
+                        )
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门 -->
+                 <isEqual property="scope" compareValue="2" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode=#deptCode#
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                           belongerContract.deptCode=#deptCode#
+                     </isEqual>
+                 </isEqual>
+                 <!--  本人及下属 -->
+                 <isEqual property="scope" compareValue="3" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门及下属部门 -->
+                 <isEqual property="scope" compareValue="4" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+            </isNotEmpty>
+        ORDER BY pay.gmt_create DESC LIMIT #startRow#,#pageSize#
+	</select>
+	
+	<!-- 根据应收、应支id查询审核通过的实收、实支 -->
+	<select id="listSumReceiptPay" parameterClass="java.util.List" resultClass="financeReceiptPayVO">
+	    SELECT
+	        `real`.id,`real`.pid,`real`.cost_amount costAmount
+	    FROM
+	        <include refid="FinanceReceiptPay.tableName" /> `real`
+		WHERE
+		    `real`.is_delete = 0 AND `real`.is_valid = 1 AND `real`.type IN (1,3) AND `real`.cost_state in(8,10)
+		AND `real`.pid IN 
+        <iterate open="(" close=")" conjunction=",">
+            #[]#
+        </iterate>
+	</select>
+	
+	<!-- 根据合同编码修改收支生效状态为已生效，合同审核通过时调用 -->
+	<update id="updateValidByCode" parameterClass="financeReceiptPayDO">
+	    UPDATE
+            <include refid="FinanceReceiptPay.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#,is_valid = 1
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE pact_code = #pactCode# AND is_delete = 0 AND is_valid = 0
+	</update>
+	
+	<!-- 根据应收id查询应收详情 -->
+	<select id="getAnswerCollectDetail" parameterClass="java.lang.Long" resultClass="financeReceiptPayVO">
+	    SELECT
+		    pay.id,pay.pid,pay.type,pay.pact_code pactCode,pay.pact_type pactType,pay.income_expend_type incomeExpendType,pay.cost_type costType,
+		    pay.cost_subject costSubject,pay.cost_amount costAmount,pay.start_time startTime,pay.end_time endTime,pay.`describe`,pay.cost_time costTime,
+		    pay.house_code houseCode,pay.room_code roomCode,pay.address,pay.personnel_code personnelCode,pay.customer_role customerRole,pay.payee_object payeeObject,
+		    pay.`name`,pay.tel,pay.account,pay.bank,pay.open_bank openBank,pay.cost_way costWay,pay.cost_state costState,pay.remark,pay.overdue_day overdueDay,
+		    pay.gmt_create `create`,pay.gmt_create_name createName,belongerContract.userName belongerUserName,belongerContract.deptName belongerDeptName,
+		    belongerRent.userName serviceUserName,belongerRent.deptName serviceDeptName
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" /> pay
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '维护人'
+		) belongerContract ON belongerContract.pactCode = pay.pact_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '租后管家'
+		) belongerRent ON belongerRent.pactCode = pay.pact_code
+		WHERE
+		    pay.is_delete = 0 AND pay.type = 0 AND pay.is_valid = 1 AND id = #id#
+		LIMIT 1
+	</select>
+	
+	<!-- 根据实收id查询实收详情 -->
+	<select id="getRealCollectDetail" parameterClass="java.lang.Long" resultClass="financeReceiptPayVO">
+	    SELECT
+		    pay.id,pay.pid,pay.type,pay.pact_code pactCode,pay.pact_type pactType,pay.income_expend_type incomeExpendType,pay.cost_type costType,
+		    pay.cost_subject costSubject,pay.cost_amount costAmount,pay.start_time startTime,pay.end_time endTime,pay.`describe`,pay.cost_time costTime,
+		    pay.house_code houseCode,pay.room_code roomCode,pay.address,pay.personnel_code personnelCode,pay.customer_role customerRole,pay.payee_object payeeObject,
+		    pay.`name`,pay.tel,pay.account,pay.bank,pay.open_bank openBank,pay.cost_way costWay,pay.cost_state costState,pay.remark,pay.overdue_day overdueDay,
+		    pay.gmt_create `create`,pay.gmt_create_name createName,belongerContract.userName belongerUserName,belongerContract.deptName belongerDeptName,
+		    belongerRent.userName serviceUserName,belongerRent.deptName serviceDeptName
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" /> pay
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '维护人'
+		) belongerContract ON belongerContract.pactCode = pay.pact_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '租后管家'
+		) belongerRent ON belongerRent.pactCode = pay.pact_code
+		WHERE
+		    pay.is_delete = 0 AND pay.type = 1 AND pay.is_valid = 1 AND id = #id#
+		LIMIT 1
+	</select>
+	
+	<!-- 根据应收id查询实收集合 -->
+	<select id="listRealCollectByPid" parameterClass="java.lang.Long" resultClass="financeReceiptPayVO">
+	    SELECT
+		    pay.id,pay.pid,pay.type,pay.pact_code pactCode,pay.pact_type pactType,pay.income_expend_type incomeExpendType,pay.cost_type costType,
+		    pay.cost_subject costSubject,pay.cost_amount costAmount,pay.start_time startTime,pay.end_time endTime,pay.`describe`,pay.cost_time costTime,
+		    pay.house_code houseCode,pay.room_code roomCode,pay.address,pay.personnel_code personnelCode,pay.customer_role customerRole,pay.payee_object payeeObject,
+		    pay.`name`,pay.tel,pay.account,pay.bank,pay.open_bank openBank,pay.cost_way costWay,pay.cost_state costState,pay.remark,pay.overdue_day overdueDay,
+		    pay.gmt_create `create`,pay.gmt_create_name createName
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" /> pay
+		WHERE
+		    pay.is_delete = 0 AND pay.type = 1 AND pay.is_valid = 1 AND pid = #pid#
+	</select>
+	
+	<!-- 根据应支id查询应支详情 -->
+	<select id="getAnswerExpendDetail" parameterClass="java.lang.Long" resultClass="financeReceiptPayVO">
+	    SELECT
+		    pay.id,pay.pid,pay.type,pay.pact_code pactCode,pay.pact_type pactType,pay.income_expend_type incomeExpendType,pay.cost_type costType,
+		    pay.cost_subject costSubject,pay.cost_amount costAmount,pay.start_time startTime,pay.end_time endTime,pay.`describe`,pay.cost_time costTime,
+		    pay.house_code houseCode,pay.room_code roomCode,pay.address,pay.personnel_code personnelCode,pay.customer_role customerRole,pay.payee_object payeeObject,
+		    pay.`name`,pay.tel,pay.account,pay.bank,pay.open_bank openBank,pay.cost_way costWay,pay.cost_state costState,pay.remark,pay.overdue_day overdueDay,
+		    pay.gmt_create `create`,pay.gmt_create_name createName,belongerContract.userName belongerUserName,belongerContract.deptName belongerDeptName,
+		    belongerRent.userName serviceUserName,belongerRent.deptName serviceDeptName
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" /> pay
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '维护人'
+		) belongerContract ON belongerContract.pactCode = pay.pact_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '租后管家'
+		) belongerRent ON belongerRent.pactCode = pay.pact_code
+		WHERE
+		    pay.is_delete = 0 AND pay.type = 2 AND pay.is_valid = 1 AND id = #id#
+		LIMIT 1
+	</select>
+	
+	<!-- 根据实支id查询实支详情 -->
+	<select id="getRealExpendDetail" parameterClass="java.lang.Long" resultClass="financeReceiptPayVO">
+	    SELECT
+		    pay.id,pay.pid,pay.type,pay.pact_code pactCode,pay.pact_type pactType,pay.income_expend_type incomeExpendType,pay.cost_type costType,
+		    pay.cost_subject costSubject,pay.cost_amount costAmount,pay.start_time startTime,pay.end_time endTime,pay.`describe`,pay.cost_time costTime,
+		    pay.house_code houseCode,pay.room_code roomCode,pay.address,pay.personnel_code personnelCode,pay.customer_role customerRole,pay.payee_object payeeObject,
+		    pay.`name`,pay.tel,pay.account,pay.bank,pay.open_bank openBank,pay.cost_way costWay,pay.cost_state costState,pay.remark,pay.overdue_day overdueDay,
+		    pay.gmt_create `create`,pay.gmt_create_name createName,belongerContract.userName belongerUserName,belongerContract.deptName belongerDeptName,
+		    belongerRent.userName serviceUserName,belongerRent.deptName serviceDeptName
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" /> pay
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '维护人'
+		) belongerContract ON belongerContract.pactCode = pay.pact_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '租后管家'
+		) belongerRent ON belongerRent.pactCode = pay.pact_code
+		WHERE
+		    pay.is_delete = 0 AND pay.type = 3 AND pay.is_valid = 1 AND id = #id#
+		LIMIT 1
+	</select>
+	
+	<!-- 根据应支id查询实支集合 -->
+	<select id="listRealExpendByPid" parameterClass="java.lang.Long" resultClass="financeReceiptPayVO">
+	    SELECT
+		    pay.id,pay.pid,pay.type,pay.pact_code pactCode,pay.pact_type pactType,pay.income_expend_type incomeExpendType,pay.cost_type costType,
+		    pay.cost_subject costSubject,pay.cost_amount costAmount,pay.start_time startTime,pay.end_time endTime,pay.`describe`,pay.cost_time costTime,
+		    pay.house_code houseCode,pay.room_code roomCode,pay.address,pay.personnel_code personnelCode,pay.customer_role customerRole,pay.payee_object payeeObject,
+		    pay.`name`,pay.tel,pay.account,pay.bank,pay.open_bank openBank,pay.cost_way costWay,pay.cost_state costState,pay.remark,pay.overdue_day overdueDay,
+		    pay.gmt_create `create`,pay.gmt_create_name createName
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" /> pay
+		WHERE
+		    pay.is_delete = 0 AND pay.type = 3 AND pay.is_valid = 1 AND pid = #pid#
+	</select>
+	
+	<!-- 收支管理列表-应收、应支,分页总个数 -->
+    <select id="countReceivReceiptPay" parameterClass="financeReceiptPayQuery" resultClass="int">
+        SELECT
+            COUNT(*)
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+        WHERE
+            pay.is_delete = 0 AND pay.pact_code = #pactCode#
+            <isNotEmpty property="type" prepend="AND">
+                pay.type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="costState" prepend="AND">
+                pay.cost_state = #costState#
+            </isNotEmpty>
+    </select>
+    
+    <!-- 收支管理列表-应收、应支 -->
+    <select id="listReceivReceiptPay" parameterClass="financeReceiptPayQuery" resultClass="financeReceiptPayVO">
+        SELECT
+            pay.id,pay.pact_code pactCode,pay.type,pay.pact_type pactType,pay.address,pay.cost_state costState,pay.cost_type costType,
+            pay.payee_object payeeObject,pay.`name`,pay.cost_amount costAmount,pay.cost_time costTime,pay.overdue_day overdueDay,
+            pay.start_time startTime,pay.end_time endTime,pay.`describe`
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+        WHERE
+            pay.is_delete = 0 AND pay.pact_code = #pactCode#
+            <isNotEmpty property="type" prepend="AND">
+                pay.type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="costState" prepend="AND">
+                pay.cost_state = #costState#
+            </isNotEmpty>
+        ORDER BY pay.cost_time ASC LIMIT #startRow#,#pageSize#
+    </select>
+    
+    <!-- 收支管理列表-实收、应支,分页总个数 -->
+    <select id="countNetReceiptPay" parameterClass="financeReceiptPayQuery" resultClass="int">
+        SELECT
+            COUNT(*)
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+        WHERE
+            pay.is_delete = 0 AND pay.pact_code = #pactCode#
+            <isNotEmpty property="type" prepend="AND">
+                pay.type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="costState" prepend="AND">
+                pay.cost_state = #costState#
+            </isNotEmpty>
+    </select>
+    
+    <!-- 收支管理列表-实收、应支 -->
+    <select id="listNetReceiptPay" parameterClass="financeReceiptPayQuery" resultClass="financeReceiptPayVO">
+        SELECT
+            pay.id,pay.pid,pay.pact_code pactCode,pay.type,pay.pact_type pactType,pay.address,pay.cost_state costState,pay.cost_type costType,
+            pay.payee_object payeeObject,pay.`name`,pay.cost_amount costAmount,pay.cost_time costTime,pay.overdue_day overdueDay,
+            pay.start_time startTime,pay.end_time endTime,pay.`describe`
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+        WHERE
+            pay.is_delete = 0 AND pay.pact_code = #pactCode#
+            <isNotEmpty property="type" prepend="AND">
+                pay.type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="costState" prepend="AND">
+                pay.cost_state = #costState#
+            </isNotEmpty>
+        ORDER BY pay.cost_time ASC LIMIT #startRow#,#pageSize#
+    </select>
+    
+    <!-- 根据应收id查询应收详情 -->
+    <select id="getPactAnswerCollectDetail" parameterClass="java.lang.Long" resultClass="financeReceiptPayVO">
+        SELECT
+            pay.id,pay.pid,pay.type,pay.pact_code pactCode,pay.pact_type pactType,pay.income_expend_type incomeExpendType,pay.cost_type costType,
+            pay.cost_subject costSubject,pay.cost_amount costAmount,pay.start_time startTime,pay.end_time endTime,pay.`describe`,pay.cost_time costTime,
+            pay.house_code houseCode,pay.room_code roomCode,pay.address,pay.personnel_code personnelCode,pay.customer_role customerRole,pay.payee_object payeeObject,
+            pay.`name`,pay.tel,pay.account,pay.bank,pay.open_bank openBank,pay.cost_way costWay,pay.cost_state costState,pay.remark,pay.overdue_day overdueDay,
+            pay.gmt_create `create`,pay.gmt_create_name createName
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+        WHERE
+            pay.is_delete = 0 AND pay.type = 0 AND id = #id#
+        LIMIT 1
+    </select>
+    
+    <!-- 根据实收id查询实收详情 -->
+    <select id="getPactRealCollectDetail" parameterClass="java.lang.Long" resultClass="financeReceiptPayVO">
+        SELECT
+            pay.id,pay.pid,pay.type,pay.pact_code pactCode,pay.pact_type pactType,pay.income_expend_type incomeExpendType,pay.cost_type costType,
+            pay.cost_subject costSubject,pay.cost_amount costAmount,pay.start_time startTime,pay.end_time endTime,pay.`describe`,pay.cost_time costTime,
+            pay.house_code houseCode,pay.room_code roomCode,pay.address,pay.personnel_code personnelCode,pay.customer_role customerRole,pay.payee_object payeeObject,
+            pay.`name`,pay.tel,pay.account,pay.bank,pay.open_bank openBank,pay.cost_way costWay,pay.cost_state costState,pay.remark,pay.overdue_day overdueDay,
+            pay.gmt_create `create`,pay.gmt_create_name createName
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+        WHERE
+            pay.is_delete = 0 AND pay.type = 1 AND pay.is_valid = 1 AND id = #id#
+        LIMIT 1
+    </select>
+    
+    <!-- 根据应支id查询应支详情 -->
+    <select id="getPactAnswerExpendDetail" parameterClass="java.lang.Long" resultClass="financeReceiptPayVO">
+        SELECT
+            pay.id,pay.pid,pay.type,pay.pact_code pactCode,pay.pact_type pactType,pay.income_expend_type incomeExpendType,pay.cost_type costType,
+            pay.cost_subject costSubject,pay.cost_amount costAmount,pay.start_time startTime,pay.end_time endTime,pay.`describe`,pay.cost_time costTime,
+            pay.house_code houseCode,pay.room_code roomCode,pay.address,pay.personnel_code personnelCode,pay.customer_role customerRole,pay.payee_object payeeObject,
+            pay.`name`,pay.tel,pay.account,pay.bank,pay.open_bank openBank,pay.cost_way costWay,pay.cost_state costState,pay.remark,pay.overdue_day overdueDay,
+            pay.gmt_create `create`,pay.gmt_create_name createName
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+        WHERE
+            pay.is_delete = 0 AND pay.type = 2 AND id = #id#
+        LIMIT 1
+    </select>
+    
+    <!-- 根据实支id查询实支详情 -->
+    <select id="getPactRealExpendDetail" parameterClass="java.lang.Long" resultClass="financeReceiptPayVO">
+        SELECT
+            pay.id,pay.pid,pay.type,pay.pact_code pactCode,pay.pact_type pactType,pay.income_expend_type incomeExpendType,pay.cost_type costType,
+            pay.cost_subject costSubject,pay.cost_amount costAmount,pay.start_time startTime,pay.end_time endTime,pay.`describe`,pay.cost_time costTime,
+            pay.house_code houseCode,pay.room_code roomCode,pay.address,pay.personnel_code personnelCode,pay.customer_role customerRole,pay.payee_object payeeObject,
+            pay.`name`,pay.tel,pay.account,pay.bank,pay.open_bank openBank,pay.cost_way costWay,pay.cost_state costState,pay.remark,pay.overdue_day overdueDay,
+            pay.gmt_create `create`,pay.gmt_create_name createName
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+        WHERE
+            pay.is_delete = 0 AND pay.type = 3 AND pay.is_valid = 1 AND id = #id#
+        LIMIT 1
+    </select>
+    
+    <!-- 	查询某个托出合同的收支，并且转租时间大于收支时间的收支集合 -->
+	<select id="listReceiptPayByDate" parameterClass="financeReceiptPayQuery" resultClass="financeReceiptPayVO">
+	    SELECT
+	      pay.id,
+	      pay.pact_code AS pactCode,
+	      pay.pid,
+	      pay.type,
+	      pay.pact_code as pactCode,
+	      pay.pact_type pactType,
+	      pay.income_expend_type as incomeExpendType,
+	      pay.cost_type AS costType,
+	      pay.cost_subject AS costSubject,
+	      pay.cost_amount AS costAmount,
+	      pay.start_time AS startTime,
+	      pay.end_time AS endTime,
+          pay.`describe`,
+          pay.cost_time AS costTime,
+          pay.house_code AS houseCode,
+          pay.room_code AS roomCode,
+          pay.address,
+          pay.personnel_code AS personnelCode,
+          pay.customer_role AS customerRole,
+          pay.payee_object AS payeeObject,
+          pay.`name`,
+          pay.tel,
+          pay.account,
+          pay.bank,
+          pay.open_bank AS openBank,
+          pay.cost_way AS costWay,
+          pay.cost_state AS costState,
+          pay.remark,
+          pay.overdue_day  AS overdueDay
+		FROM
+		    finance_receipt_pay pay
+		WHERE
+		    pay.is_delete = 0
+		AND pay.pact_code = #pactCode#
+		AND <![CDATA[pay.cost_time >= ]]>#costTimeStr#
+		<isNotEmpty property="costState" prepend="and">
+		   pay.cost_state = #costState#
+		</isNotEmpty>
+	</select>
+	<!--   删除某个托出合同的收支，并且转租时间大于收支时间的收支集合 -->
+	<update id="removeOldPactFinanceReceiptPay" parameterClass="financeReceiptPayDO" >
+	    UPDATE
+            <include refid="FinanceReceiptPay.tableName" /> 
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#,is_delete=1
+        WHERE
+            pact_code = #pactCode# and cost_state in(1,4)
+        AND <![CDATA[cost_time >= ]]> #costTime#
+	</update>
+	
+	<!-- 修改收支费用状态 -->
+    <update id="updateCostState" parameterClass="financeReceiptPayDO">
+        UPDATE
+            <include refid="FinanceReceiptPay.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="costState">
+            cost_state = #costState#
+        </isNotNull>
+        <isEqual property="costState" compareValue="9">
+            <isNotNull prepend="," property="remark">
+	            remark = #remark#
+	        </isNotNull>
+        </isEqual>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE id = #id# AND is_delete = 0
+	        <isEqual property="costState" compareValue="2" prepend="AND">
+	            (cost_state = 1 OR cost_state = 2)
+	        </isEqual>
+	        <isEqual property="costState" compareValue="3" prepend="AND">
+	            (cost_state = 1 OR cost_state = 2)
+	        </isEqual>
+	        <isEqual property="costState" compareValue="5" prepend="AND">
+	            (cost_state = 4 OR cost_state = 5)
+	        </isEqual>
+	        <isEqual property="costState" compareValue="6" prepend="AND">
+	            (cost_state = 4 OR cost_state = 5)
+	        </isEqual>
+	        <isEqual property="costState" compareValue="8" prepend="AND">
+	            cost_state = 7
+	        </isEqual>
+	        <isEqual property="costState" compareValue="9" prepend="AND">
+	            cost_state = 7
+	        </isEqual>
+    </update>
+    
+    <!-- 根据应收、应支id 查询 实收、实支总和 -->
+    <select id="getRealAmountByPid" parameterClass="java.lang.Long" resultClass="double">
+        SELECT
+            IFNULL (SUM(`real`.cost_amount), 0) costAmount
+		FROM
+		    <include refid="FinanceReceiptPay.tableName" /> `real`
+		WHERE
+		    `real`.is_delete = 0 AND `real`.is_valid = 1 AND `real`.type IN (1, 3) AND `real`.cost_state IN (7,8) AND `real`.pid = #pid#
+    </select>
+    
+    <!-- 根据收支id修改收支信息 -->
+    <update id="updateFinancePayById" parameterClass="financeReceiptPayDO">
+        UPDATE
+            <include refid="FinanceReceiptPay.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="costTime">cost_time = #costTime#</isNotNull>
+        <isNotNull prepend="," property="costWay">cost_way = #costWay#</isNotNull>
+        <isNotNull prepend="," property="costState">cost_state = #costState#</isNotNull>
+        <isNotNull prepend="," property="ip">ip = #ip#</isNotNull>
+        WHERE id = #id# AND is_delete = 0
+    </update>
+    <!--     查看登录人有没有某个收支 的权限 -->
+    <select id="getPermissions" parameterClass="financeReceiptPayQuery" resultClass="financeReceiptPayVO">
+        SELECT
+		    pay.id
+		FROM
+		    `finance_receipt_pay` pay
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '维护人'
+		) belongerContract ON belongerContract.pactCode = pay.pact_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '租后管家'
+		) belongerRent ON belongerRent.pactCode = pay.pact_code
+		WHERE
+		    pay.is_delete = 0  AND id = #id#
+            <!-- 数据权限 -->
+            <isNotEmpty property="scope" >
+                 <!--  本人 -->
+                 <isEqual property="scope" compareValue="1" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin = #userPin#
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                           belongerContract.userPin=#userPin#
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门 -->
+                 <isEqual property="scope" compareValue="2" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode=#deptCode#
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                           belongerContract.deptCode=#deptCode#
+                     </isEqual>
+                 </isEqual>
+                 <!--  本人及下属 -->
+                 <isEqual property="scope" compareValue="3" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.userPin in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="pinList" open="(" close=")" conjunction=",">
+                             #pinList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+                 <!--  本部门及下属部门 -->
+                 <isEqual property="scope" compareValue="4" >
+                     <!--租后管家 -->
+                     <isEqual property="position" compareValue="1" prepend="and">
+                       belongerRent.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                          #deptList[]#
+                       </iterate>
+                     </isEqual>
+                     <isEqual property="position" compareValue="2" prepend="and">
+                       belongerContract.deptCode in
+                       <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                       </iterate>
+                     </isEqual>
+                 </isEqual>
+            </isNotEmpty>
+         LIMIT 1   
+    </select>
+    
+    <!-- 根据合同编码查询收支集合 -->
+    <select id="listFinanceReceiptPayByPactCode" parameterClass="financeReceiptPayQuery" resultClass="financeReceiptPayVO">
+        SELECT
+            id,pid,type,pact_code pactCode,pact_type pactType,income_expend_type incomeExpendType,cost_type costType,cost_subject costSubject,cost_amount costAmount,start_time startTime,end_time endTime,
+            `describe`,cost_time costTime,house_code houseCode,room_code roomCode,address,personnel_code personnelCode,customer_role customerRole,payee_object payeeObject,`name`,tel,account,
+            bank,open_bank openBank,cost_way costWay,cost_state costState,remark,overdue_day overdueDay,is_delete isDelete,ip,gmt_create `create`,gmt_create_name createName
+        FROM
+            <include refid="FinanceReceiptPay.tableName" />
+        WHERE
+            is_delete = 0 AND pact_code = #pactCode#
+            <isNotEmpty property="isValid" prepend="and">
+              is_valid = #isValid#
+            </isNotEmpty>
+            <isNotEmpty property="type" prepend="and">
+              type = #type#
+            </isNotEmpty>
+            <isNotEmpty property="costState" prepend="and">
+              cost_state = #costState#
+            </isNotEmpty>
+    </select>
+    <!--     根据条件查询收支费用  -->
+    <select id="countRecPayAmount" parameterClass="financeReceiptPayQuery" resultClass="java.lang.Double">
+       SELECT
+		    IFNULL (SUM(pay.cost_amount), 0) costAmount
+	   FROM
+		    finance_receipt_pay pay
+	   WHERE
+		  pay.is_delete=0 and   pay.is_valid = 1
+	    <isNotEmpty property="costType" prepend="and">
+          pay.cost_type = #costType#
+       </isNotEmpty>
+	   <isNotEmpty property="costWay" prepend="and">
+	      pay.cost_way = #costWay#
+	   </isNotEmpty>
+	   <isNotEmpty property="costState" prepend="and">
+          pay.cost_state = #costState#
+       </isNotEmpty>
+       <isNotEmpty property="type" prepend="and">
+          pay.type = #type#
+       </isNotEmpty>
+    </select>
+    <select id="getLastRecPay" parameterClass="financeReceiptPayQuery" resultClass="financeReceiptPayVO">
+        SELECT
+            pay.id,pay.pact_code pactCode,pay.pact_type pactType,pay.address,pay.cost_state costState,pay.type,pay.cost_type costType,
+            pay.payee_object payeeObject,pay.`name`,pay.cost_amount costAmount,pay.cost_time costTime,pay.overdue_day overdueDay,pay.start_time startTime,pay.end_time endTime,
+            pay.`describe`,belongerRent.userName serviceUserName,belongerRent.deptName serviceDeptName,
+            belongerContract.userName belongerUserName,belongerContract.deptName belongerDeptName,house.decoration
+        FROM
+            <include refid="FinanceReceiptPay.tableName" /> pay
+            where pay.is_delete=0
+        <isNotEmpty property="pactCode" prepend="AND">
+                pay.pact_code = #pactCode#
+        </isNotEmpty>
+        <isNotEmpty property="pid" prepend="AND">
+                pay.pid = #pid#
+        </isNotEmpty>
+        order by pay.gmt_create desc limit 1
+    </select>
+    
+</sqlMap>

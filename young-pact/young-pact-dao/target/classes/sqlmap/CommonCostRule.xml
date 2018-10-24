@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="CommonCostRule">
+	<typeAlias alias="commonCostRuleDO" type="com.young.pact.domain.commoncostrule.CommonCostRuleDO" />
+	<typeAlias alias="commonCostRuleVO" type="com.young.pact.domain.commoncostrule.CommonCostRuleVO" />
+	<sql id="allFields">
+	    id,pact_code,pact_type,receipt_pay_type,cost_code,cost_type,receipt_pay_way,cost_price,payee,account,ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		pact_common_cost_rule
+	</sql>
+	
+	<!-- 保存托进合同收支规则 -->
+	<insert id="saveCommonCostRule" parameterClass="commonCostRuleDO">
+	    INSERT INTO
+        <include refid="CommonCostRule.tableName" />
+        (pact_code,pact_type,receipt_pay_type,cost_code,cost_type,receipt_pay_way,cost_price,payee,account,ip,gmt_create,gmt_create_name)
+        values(#pactCode#,#pactType#,#receiptPayType#,#costCode#,#costType#,#receiptPayWay#,#costPrice#,#payee#,#account#,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 根据合同编码查询合同收支规则信息集合 -->
+	<select id="listCommonCostRule" parameterClass="java.lang.String" resultClass="commonCostRuleVO">
+	    SELECT
+		    id,pact_code pactCode,pact_type pactType,receipt_pay_type receiptPayType,cost_code costCode,cost_type costType,
+		    receipt_pay_way receiptPayWay,cost_price costPrice,payee,account,gmt_create `create`,gmt_create_name createName
+		FROM
+		    <include refid="CommonCostRule.tableName" />
+		WHERE
+		     pact_code = #pactCode#
+	</select>
+	
+	<!-- 根据合同编码查询合同收支规则 -->
+	<delete id="removeCommonCostRule" parameterClass="java.lang.String">
+	    DELETE FROM <include refid="CommonCostRule.tableName" /> WHERE pact_code = #pactCode#
+	</delete>
+	
+	<!-- 删除 不包含 收支规则的集合数据 的收支规则！！ -->
+	<delete id="removeNotCommonCostRule" parameterClass="java.util.Map">
+        DELETE FROM <include refid="CommonCostRule.tableName" />
+        WHERE
+	       id IN (
+	            SELECT r3.id FROM
+	            (
+			        SELECT r1.id FROM
+					    <include refid="CommonCostRule.tableName" /> r1
+					WHERE
+					    r1.pact_code = #pactCode#
+					AND NOT EXISTS (
+					    SELECT
+					        r2.id
+					    FROM
+					        <include refid="CommonCostRule.tableName" /> r2
+					    WHERE
+					        r1.id = r2.id AND r2.pact_code = #pactCode#
+					    AND r2.id IN 
+					    <isNotEmpty property="commonCostRuleList">
+						    <iterate open="(" close=")" conjunction="," property="commonCostRuleList">
+					            #commonCostRuleList[].id#
+					        </iterate>
+			            </isNotEmpty>
+					    <isEmpty property="commonCostRuleList">
+					       (0)
+			            </isEmpty>
+					)
+	            ) r3
+	       )
+	</delete>
+	
+	<!-- 修改收支规则 -->
+	<update id="updateCommonCostRule" parameterClass="commonCostRuleDO">
+	    UPDATE
+            <include refid="CommonCostRule.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="receiptPayType">receipt_pay_type = #receiptPayType#</isNotNull>
+        <isNotNull prepend="," property="costCode">cost_code = #costCode#</isNotNull>
+        <isNotNull prepend="," property="costType">cost_type = #costType#</isNotNull>
+        <isNotNull prepend="," property="receiptPayWay">receipt_pay_way = #receiptPayWay#</isNotNull>
+        <isNotNull prepend="," property="costPrice">cost_price = #costPrice#</isNotNull>
+        <isNotNull prepend="," property="payee">payee = #payee#</isNotNull>
+        <isNotNull prepend="," property="account">account = #account#</isNotNull>
+        <isNotNull prepend="," property="ip">ip = #ip#</isNotNull>
+        WHERE id = #id# AND pact_code = #pactCode#
+	</update>
+</sqlMap>

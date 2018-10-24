@@ -1,0 +1,598 @@
+package com.young.pact.service.declare.impl;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.stereotype.Service;
+
+import com.tools.common.util.convert.BeanUtils;
+import com.tools.common.util.json.JsonUtil;
+import com.tools.common.util.string.StringUtil;
+import com.young.common.dict.CommonEnum;
+import com.young.common.domain.ApiResult;
+import com.young.common.page.PageBean;
+import com.young.common.page.PageTableBean;
+import com.young.house.api.domain.result.rpc.house.GetHouseRpcResult;
+import com.young.house.api.domain.result.rpc.survey.GoodsPicRpcResult;
+import com.young.house.api.domain.result.rpc.survey.SurveyGoodsRpcResult;
+import com.young.house.api.domain.result.rpc.survey.SurveyListRpcResult;
+import com.young.pact.api.domain.param.rest.declare.DeclareParam;
+import com.young.pact.api.domain.result.rest.declare.DeclareResult;
+import com.young.pact.api.domain.result.rest.declareprice.DeclarePriceResult;
+import com.young.pact.api.service.rest.declare.DeclareService;
+import com.young.pact.common.constant.NormalConstant;
+import com.young.pact.common.constant.SerializeTypeConts;
+import com.young.pact.common.constant.StringConsts;
+import com.young.pact.common.dict.PactCommonEnum;
+import com.young.pact.common.exception.PactManagerExcepion;
+import com.young.pact.domain.declare.DeclareDO;
+import com.young.pact.domain.declare.DeclareQuery;
+import com.young.pact.domain.declare.DeclareVO;
+import com.young.pact.domain.declareprice.DeclarePriceDO;
+import com.young.pact.domain.declareprice.DeclarePriceVO;
+import com.young.pact.domain.purchasebase.PurchaseBaseQuery;
+import com.young.pact.domain.purchasebase.PurchaseBaseVO;
+import com.young.pact.domain.statistics.AgendaDO;
+import com.young.pact.manager.declare.DeclareManager;
+import com.young.pact.manager.declareprice.DeclarePriceManager;
+import com.young.pact.manager.purchasebase.PurchaseBaseManager;
+import com.young.pact.manager.statistics.StatisticsManager;
+import com.young.pact.rpc.dept.DeptRpc;
+import com.young.pact.rpc.dictionary.DictionaryRpc;
+import com.young.pact.rpc.house.HouseRpc;
+import com.young.pact.rpc.operatelog.OperateLogRpc;
+import com.young.pact.rpc.personal.PersonalRpc;
+import com.young.pact.rpc.remind.RemindRpc;
+import com.young.pact.rpc.serialize.SerializeRpc;
+import com.young.pact.rpc.survey.SurveyRpc;
+import com.young.sso.api.domain.result.rpc.personal.PersonalResult;
+
+
+/**
+ * @描述 : 申报
+ * @author : GuoXiaoPeng
+ * @创建时间 : 2018年8月13日 下午1:42:28
+ */
+@Service("declareService")
+public class DeclareServiceImpl implements DeclareService {
+
+    private static final Log LOG = LogFactory.getLog(DeclareServiceImpl.class); 
+    private DeclareManager declareManager;
+    private DeclarePriceManager declarePriceManager;
+    private PurchaseBaseManager purchaseBaseManager;
+    private DictionaryRpc dictionaryRpc;
+    private SerializeRpc serializeRpc;
+    private PersonalRpc personalRpc;
+    private SurveyRpc surveyRpc;
+    private HouseRpc houseRpc;
+    private OperateLogRpc operateLogRpc;
+    private DeptRpc deptRpc;
+    private Map<String,String> remindMap;
+    private RemindRpc remindRpc;
+    private StatisticsManager statisticsManager;
+    @Override
+    public ApiResult<String> saveDeclare(DeclareParam declareParam) {
+        ApiResult<String> result = new ApiResult<>();
+        String declareCode = "";
+        try {
+            if(null == declareParam){
+                result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                return result;
+            }
+            declareCode = serializeRpc.queryCodeBySerializeType(SerializeTypeConts.DECLARETYPE);
+            String pin = declareParam.getCreateName();
+            String ip = declareParam.getIp();
+            DeclareQuery declareQuery = new DeclareQuery();
+           
+            BeanUtils.copyProperties(declareParam, declareQuery);
+            /*********************   查询实勘的照片，物品和户型图是否未填  start****************************/
+            SurveyListRpcResult survey = surveyRpc.getSurvey(declareParam.getSurveyCode());
+            if(null == survey.getSurveyPic() || survey.getSurveyPic().size()<=0){
+                result.setCode(PactCommonEnum.DECLARE_SURVEY_ERROR.getCode());
+                result.setMessage(PactCommonEnum.DECLARE_SURVEY_ERROR.getMessage());
+                return result;
+            }
+            if(null == survey.getSurveyGoods() || survey.getSurveyGoods().size()<=0){
+                result.setCode(PactCommonEnum.DECLARE_SURVEY_ERROR.getCode());
+                result.setMessage(PactCommonEnum.DECLARE_SURVEY_ERROR.getMessage());
+                return result;
+            }
+            /*********************   查询实勘的照片，物品和户型图是否未填  end****************************/
+            declareQuery.setState(2);
+            declareQuery.setHouseCode(survey.getHouseCode());
+            List<DeclareVO>  declareVOs = declareManager.listDeclareByParam(declareQuery);
+            if(null!=declareVOs&&declareVOs.size()>0){
+                result.setCode(PactCommonEnum.DECLARE_HOUSE_STATE_EXITS.getCode());
+                result.setMessage(PactCommonEnum.DECLARE_HOUSE_STATE_EXITS.getMessage());
+                return result; 
+            }
+            DeclareDO declareDO = new DeclareDO();
+            BeanUtils.copyProperties(declareParam, declareDO);
+            declareDO.setIp(ip);
+            declareDO.setCreateName(pin);
+            declareDO.setDeclareCode(declareCode);
+            declareDO.setState(1);
+            declareDO.setType(1);
+            /*************************     根据实勘编码查询实勘详情  start*******************************************/
+            //根据实勘编码查询实勘信息
+            declareDO.setHouseCode(survey.getHouseCode());
+            //根据房源编码查询物业地址
+            List<GetHouseRpcResult> getHouseRpcList = houseRpc.getHouseByCodeList(survey.getHouseCode());
+            StringBuilder propertyAddress = new StringBuilder();
+            StringBuilder surveyGoodsPic = new StringBuilder();
+            if(null!=getHouseRpcList&&getHouseRpcList.size()>0){
+                com.young.house.api.domain.result.rpc.house.GetHouseRpcResult houseRpcResult = getHouseRpcList.get(0);
+                propertyAddress.append(houseRpcResult.getEstate()).append(StringConsts.CROSSLINE).append(houseRpcResult.getBuildingNo())
+                .append(StringConsts.CROSSLINE).append(houseRpcResult.getUnitNo()).append(StringConsts.CROSSLINE).append(houseRpcResult.getHouseNo());
+            }
+            declareDO.setAddress(propertyAddress.toString());
+            declareDO.setSurveyInfo(JsonUtil.toJson(survey));
+            declareDO.setSurveyGoods(JsonUtil.toJson(survey.getSurveyGoods()));
+            List<SurveyGoodsRpcResult> surveyGoods = survey.getSurveyGoods();
+            for(SurveyGoodsRpcResult surveyGoodsRpcResult:surveyGoods){
+                List<GoodsPicRpcResult> goodsPic = surveyGoodsRpcResult.getGoodsPic();
+                surveyGoodsPic.append(JsonUtil.toJson(goodsPic));
+            }
+            declareDO.setSurveyGoodsPic(surveyGoodsPic.toString());
+            declareDO.setSurveyPic(JsonUtil.toJson(survey.getSurveyPic()));
+            //根据登录人ping查询用户信息
+            ApiResult<PersonalResult> personalResult = personalRpc.getPersonalResultBypin(pin);
+            PersonalResult personalData = personalResult.getData();
+            declareDO.setUserPin(pin);
+            declareDO.setDeptName(personalData.getDeptName());
+            declareDO.setUserName(personalData.getEmployeeName());
+            declareDO.setDeptCode(personalData.getDeptCode());
+            /*************************   根据实勘编码查询实勘详情  end*******************************************/
+            List<DeclarePriceDO> declarePriceDOs = new ArrayList<>();
+            if(null!=declareParam.getDeclarePriceParams()&&declareParam.getDeclarePriceParams().size()>0){
+                BeanUtils.copyListProperties(declareParam.getDeclarePriceParams(), declarePriceDOs, DeclarePriceDO.class);
+            }
+            for(DeclarePriceDO declarePriceDO: declarePriceDOs){
+                declarePriceDO.setCreateName(pin);
+                declarePriceDO.setIp(ip);
+                declarePriceDO.setDeclareCode(declareCode);
+            }
+            Boolean flag = declareManager.saveDeclare(declareDO,declarePriceDOs);
+            if(flag){
+                Map<String, Object> declareMap = new HashMap<String, Object>();
+                declareMap.put(NormalConstant.SERVICETYPE, SerializeTypeConts.DECLARETYPE);
+                declareMap.put(NormalConstant.SERVICECODE, declareDO.getDeclareCode());
+                declareMap.put(NormalConstant.OPERATETYPE, StringConsts.ADD);
+                declareMap.put(NormalConstant.OPERATECONTENT, StringConsts.ADD_DATA);
+                declareMap.put(NormalConstant.OPERATEPIN, declareDO.getCreateName());
+                operateLogRpc.saveOperateLog(declareMap);
+                /*************************首页待办数据统计  start*****************************/
+                AgendaDO agendaDO = new AgendaDO();
+                agendaDO.setServiceCode(declareCode);
+                agendaDO.setType(StringConsts.STATISTIC_PENDING_DECLARE);
+                agendaDO.setIsDo(0);
+                agendaDO.setPin(pin);
+                agendaDO.setName(personalData.getEmployeeName());
+                agendaDO.setDeptCode(declareDO.getDeptCode());
+                agendaDO.setDeptName(declareDO.getDeptName());
+                agendaDO.setDate(new Date());
+                statisticsManager.saveBacklogStatistics(agendaDO);
+                /*************************首页待办数据统计  end*****************************/
+                result.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+                result.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+                result.setData(declareCode);
+            }else{
+                result.setCode(PactCommonEnum.DECLARE_SAVE_FAIL.getCode());
+                result.setMessage(PactCommonEnum.DECLARE_SAVE_FAIL.getMessage());
+            }
+        }  catch(PactManagerExcepion e){
+            LOG.error(e.getMessage(), e);
+            result.setCode(PactCommonEnum.DECLARE_SAVE_FAIL.getCode());
+            result.setMessage(PactCommonEnum.DECLARE_SAVE_FAIL.getMessage());
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    public ApiResult<PageBean<DeclareResult>> listDeclare(DeclareParam param) {
+        ApiResult<PageBean<DeclareResult>> result = new ApiResult<>();
+        try {
+            if(null == param){
+                result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                return result;
+            }
+            DeclareQuery declareQuery = new DeclareQuery();
+            BeanUtils.copyProperties(param, declareQuery);
+            Integer scope = param.getScope();
+            if(1 == scope){// 1=本人
+                declareQuery.setUserPin(param.getCreateName());
+            }else if(2 == scope){// 2=本部门
+                ApiResult<PersonalResult> personApiResult = personalRpc.getPersonalResultBypin(param.getCreateName());
+                if(CommonEnum.REQUEST_SUCCESS.getCode().equals(personApiResult.getCode())){
+                    PersonalResult personalResult = personApiResult.getData();
+                    declareQuery.setDeptCode(personalResult.getDeptCode());
+                }
+            }else if(3 == scope){//3=本人及下属
+                List<String> pinList = personalRpc.listLowerByPin(param.getCreateName());
+                declareQuery.setPinList(pinList);
+            }else if(4 == scope){//4=本部门及下属部门
+                ApiResult<PersonalResult> personApiResult = personalRpc.getPersonalResultBypin(param.getCreateName());
+                if(CommonEnum.REQUEST_SUCCESS.getCode().equals(personApiResult.getCode())){
+                    PersonalResult personalResult = personApiResult.getData();
+                    List<String> deptList = deptRpc.listCodeByDeptCode(personalResult.getDeptCode());
+                    declareQuery.setDeptList(deptList);
+                }
+            }
+            PageBean<DeclareVO> pageBean = declareManager.listDeclare(declareQuery);
+            PageBean<DeclareResult> page = new PageTableBean<>(declareQuery.getPageIndex(), declareQuery.getPageSize());
+            page.setTotalItem(pageBean.getTotalItem());
+            BeanUtils.copyListProperties(pageBean.getData(), page.getData(), DeclareResult.class);
+            result.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+            result.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+            result.setData(page);
+        } catch(PactManagerExcepion e){
+            LOG.error(e.getMessage(), e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    public ApiResult<DeclareResult> getDeclareByDeclareCode(String declareCode) {
+        ApiResult<DeclareResult> result = new ApiResult<>();
+        DeclareResult declareResult = new DeclareResult();
+        try {
+            DeclareVO declareVO = declareManager.getDeclareByDeclareCode(declareCode);
+            BeanUtils.copyProperties(declareVO, declareResult);
+            List<DeclarePriceVO> declarePriceVOs = declarePriceManager.listDeclarePriceByDecCode(declareCode);
+            List<DeclarePriceResult> declarePriceResults = new ArrayList<>();
+            BeanUtils.copyListProperties(declarePriceVOs, declarePriceResults, DeclarePriceResult.class);
+            declareResult.setDeclarePriceResults(declarePriceResults);
+            result.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+            result.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+            result.setData(declareResult);
+        } catch(PactManagerExcepion e){
+            LOG.error(e.getMessage(), e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    public ApiResult<Boolean> reviewPassDeclare(DeclareParam param) {
+        ApiResult<Boolean> result = new ApiResult<>();
+        if(null==param){
+            result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+            result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+            return result;
+        }
+        if(StringUtil.isBlank(param.getDeclareCode())){
+            result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+            result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+            return result;
+        }
+        try{
+            DeclareVO declareVO = declareManager.getDeclareByDeclareCode(param.getDeclareCode());
+            if(null!=declareVO){
+                if( declareVO.getState()==1 ){
+                    DeclareQuery declareQuery = new DeclareQuery();
+                    declareQuery.setHouseCode(declareVO.getHouseCode());
+                    declareQuery.setState(2);
+                    List<DeclareVO> declareListByHouseCode = declareManager.listDeclareByParam(declareQuery);
+                    if(null!=declareListByHouseCode&&declareListByHouseCode.size()>0){
+                        result.setCode(PactCommonEnum.DECLARE_HOUSE_PASS_EXIT.getCode());
+                        result.setMessage(PactCommonEnum.DECLARE_HOUSE_PASS_EXIT.getMessage());
+                        return result;
+                    }
+                    DeclareDO declareDO = new DeclareDO();
+                    BeanUtils.copyProperties(param, declareDO);
+                    declareDO.setState(2);
+                    //根据登录人ping查询用户信息
+                    ApiResult<PersonalResult> personalResult = personalRpc.getPersonalResultBypin(param.getModifiedName());
+                    PersonalResult personalData = personalResult.getData();
+                    declareDO.setUserPin(param.getModifiedName());
+                    declareDO.setDeptName(personalData.getDeptName());
+                    declareDO.setUserName(personalData.getCreateName());
+                    boolean flag = declareManager.updateDeclareStateByCode(declareDO);
+                    if(flag){
+                        Map<String, Object> declareMap = new HashMap<String, Object>();
+                        declareMap.put(NormalConstant.SERVICETYPE, SerializeTypeConts.DECLARETYPE);
+                        declareMap.put(NormalConstant.SERVICECODE, declareDO.getDeclareCode());
+                        declareMap.put(NormalConstant.OPERATETYPE, StringConsts.OPERATETYPE_REVIEW_PASS);
+                        declareMap.put(NormalConstant.OPERATECONTENT, StringConsts.UPDATE_DATA);
+                        declareMap.put(NormalConstant.OPERATEPIN, declareDO.getModifiedName());
+                        operateLogRpc.saveOperateLog(declareMap);
+                        /******************** 修改待办事务统计表的状态  start *******************************/
+                        AgendaDO agendaDO = new AgendaDO();
+                        agendaDO.setServiceCode(param.getDeclareCode());
+                        agendaDO.setIsDo(1);
+                        agendaDO.setType(StringConsts.STATISTIC_PENDING_DECLARE);
+                        agendaDO.setModifiedName(param.getModifiedName());
+                        agendaDO.setIp(param.getIp());
+                        statisticsManager.updatBacklogStatisticsIsDo(agendaDO);
+                        /******************** 修改待办事务统计表的状态  end *******************************/
+                        result.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+                        result.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+                        result.setData(flag);
+                    }else{
+                        result.setCode(PactCommonEnum.DECLARE_REVIEWPASS_ERROR.getCode());
+                        result.setMessage(PactCommonEnum.DECLARE_REVIEWPASS_ERROR.getMessage());
+                    }
+                }else{
+                    result.setCode(PactCommonEnum.DECLARE_REVIEW_STATE_ERROR.getCode());
+                    result.setMessage(PactCommonEnum.DECLARE_REVIEW_STATE_ERROR.getMessage());
+                }
+            }
+        } catch (PactManagerExcepion e){
+            LOG.error(e);
+            result.setCode(PactCommonEnum.DECLARE_REVIEWPASS_ERROR.getCode());
+            result.setMessage(PactCommonEnum.DECLARE_REVIEWPASS_ERROR.getMessage());
+        } catch (Exception e) {
+            LOG.error(e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    public ApiResult<Boolean> reviewDismissalDeclare(DeclareParam param) {
+        ApiResult<Boolean> result = new ApiResult<>();
+        if(null==param){
+            result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+            result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+            return result;
+        }
+        if(StringUtil.isBlank(param.getDeclareCode())){
+            result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+            result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+            return result;
+        }
+        try{
+            DeclareVO declareVO = declareManager.getDeclareByDeclareCode(param.getDeclareCode());
+            if(null!=declareVO){
+                if( declareVO.getState()==1 || declareVO.getState()==2){
+                    PurchaseBaseQuery purchaseBaseQuery = new PurchaseBaseQuery();
+                    purchaseBaseQuery.setDeclareCode(param.getDeclareCode());
+                    List<PurchaseBaseVO> purchaseBaseVOs =  purchaseBaseManager.listPurchaseBaseByParam(purchaseBaseQuery);
+                    //该申报是否创建托进合同
+                    if(null!=purchaseBaseVOs&&purchaseBaseVOs.size()>0){
+                        result.setCode(PactCommonEnum.DECLARE_REVIEWDISMISSAL_ERROR.getCode());
+                        result.setMessage(PactCommonEnum.DECLARE_REVIEWDISMISSAL_ERROR.getMessage());
+                        return result;
+                    }
+                    DeclareDO declareDO = new DeclareDO();
+                    BeanUtils.copyProperties(param, declareDO);
+                    declareDO.setState(3);
+                    //根据登录人ping查询用户信息
+                    ApiResult<PersonalResult> personalResult = personalRpc.getPersonalResultBypin(param.getModifiedName());
+                    PersonalResult personalData = personalResult.getData();
+                    declareDO.setUserPin(param.getModifiedName());
+                    declareDO.setDeptName(personalData.getDeptName());
+                    declareDO.setUserName(personalData.getCreateName());
+                    boolean flag = declareManager.updateDeclareStateByCode(declareDO);
+                    if(flag){
+                        List<String> variableList = new ArrayList<>();
+                        variableList.add(param.getDeclareCode());
+                        saveRemind(declareVO,StringConsts.REVIEW_DISMISSAL_DECLARE,variableList);
+                        Map<String, Object> declareMap = new HashMap<String, Object>();
+                        declareMap.put(NormalConstant.SERVICETYPE, SerializeTypeConts.DECLARETYPE);
+                        declareMap.put(NormalConstant.SERVICECODE, declareDO.getDeclareCode());
+                        declareMap.put(NormalConstant.OPERATETYPE, StringConsts.OPERATETYPE_REVIEW_DISMISSAL);
+                        declareMap.put(NormalConstant.OPERATECONTENT, param.getReason());
+                        declareMap.put(NormalConstant.OPERATEPIN, declareDO.getModifiedName());
+                        operateLogRpc.saveOperateLog(declareMap);
+                        /******************** 修改待办事务统计表的状态  start *******************************/
+                        AgendaDO agendaDO = new AgendaDO();
+                        agendaDO.setServiceCode(param.getDeclareCode());
+                        agendaDO.setIsDo(1);
+                        agendaDO.setType(StringConsts.STATISTIC_PENDING_DECLARE);
+                        agendaDO.setModifiedName(param.getModifiedName());
+                        agendaDO.setIp(param.getIp());
+                        statisticsManager.updatBacklogStatisticsIsDo(agendaDO);
+                        /******************** 修改待办事务统计表的状态  end *******************************/
+                        result.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+                        result.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+                        result.setData(flag);
+                    }else{
+                        result.setCode(PactCommonEnum.DECLARE_REVIEWDISMISSAL_FAIL.getCode());
+                        result.setMessage(PactCommonEnum.DECLARE_REVIEWDISMISSAL_FAIL.getMessage());
+                    }
+                }else{
+                    result.setCode(PactCommonEnum.DECLARE_REVIEWDISMISSAL_FAIL.getCode());
+                    result.setMessage(PactCommonEnum.DECLARE_REVIEWDISMISSAL_FAIL.getMessage());
+                }
+            }
+        } catch (PactManagerExcepion e){
+            LOG.error(e);
+            result.setCode(PactCommonEnum.DECLARE_REVIEWPASS_ERROR.getCode());
+            result.setMessage(PactCommonEnum.DECLARE_REVIEWPASS_ERROR.getMessage());
+        } catch (Exception e) {
+            LOG.error(e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return result;
+    }
+    /**
+    * @Title: saveRemind
+    * @Description: TODO( 发送指定内容的提醒消息 )
+    * @author GuoXiaoPeng
+    * @param declareVO 资源编码
+    * @param key 模板key
+    * @param variableList 替换的变量集合
+    * @throws 异常
+    */
+    private void saveRemind(DeclareVO declareVO, String key, List<String> variableList) {
+        String content = remindMap.get(key);
+        for (int i = 0; i < variableList.size(); i++) {
+            content = content.replace(StringConsts.VARIABLE + i, variableList.get(i));
+        }
+        Map<String, Object> map = new HashMap<>();
+        map.put(NormalConstant.REMIND_PIN, declareVO.getUserPin());
+        map.put(NormalConstant.REMIND_SERVICETYPE, SerializeTypeConts.DECLARETYPE);
+        map.put(NormalConstant.REMIND_SERVICECODE, declareVO.getDeclareCode());
+        map.put(NormalConstant.REMIND_REMINDCONTENT,content);
+        remindRpc.saveRemind(map);
+    }
+
+
+    @Override
+    public ApiResult<DeclareResult> copyDeclareByDeclareCode(String declareCode) {
+        ApiResult<DeclareResult> result = new ApiResult<>();
+        DeclareResult declareResult = new DeclareResult();
+        try {
+            DeclareVO declareVO = declareManager.getDeclareByDeclareCode(declareCode);
+            if(null!=declareVO&&declareVO.getState()!=3){
+                result.setCode(PactCommonEnum.DECLARE_STATE_NO_COPY.getCode());
+                result.setMessage(PactCommonEnum.DECLARE_STATE_NO_COPY.getMessage());
+                return result;
+            }
+            DeclareQuery declareQuery = new DeclareQuery();
+            declareQuery.setHouseCode(declareVO.getHouseCode());
+            declareQuery.setState(2);
+            List<DeclareVO> declareListByHouseCode = declareManager.listDeclareByParam(declareQuery);
+            if(null!=declareListByHouseCode&&declareListByHouseCode.size()>0){
+                result.setCode(PactCommonEnum.DECLARE_HOUSE_PASS_NO_COPY.getCode());
+                result.setMessage(PactCommonEnum.DECLARE_HOUSE_PASS_NO_COPY.getMessage());
+                return result;
+            }
+            BeanUtils.copyProperties(declareVO, declareResult);
+            List<DeclarePriceVO> declarePriceVOs = declarePriceManager.listDeclarePriceByDecCode(declareCode);
+            List<DeclarePriceResult> declarePriceResults = new ArrayList<>();
+            BeanUtils.copyListProperties(declarePriceVOs, declarePriceResults, DeclarePriceResult.class);
+            declareResult.setDeclarePriceResults(declarePriceResults);
+            result.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+            result.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+            result.setData(declareResult);
+        } catch(PactManagerExcepion e){
+            LOG.error(e.getMessage(), e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        } catch (Exception e) {
+            LOG.error(e.getMessage(), e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return result;
+    }
+    public DeclareManager getDeclareManager() {
+        return declareManager;
+    }
+
+    public void setDeclareManager(DeclareManager declareManager) {
+        this.declareManager = declareManager;
+    }
+
+    public DeclarePriceManager getDeclarePriceManager() {
+        return declarePriceManager;
+    }
+
+    public void setDeclarePriceManager(DeclarePriceManager declarePriceManager) {
+        this.declarePriceManager = declarePriceManager;
+    }
+
+    public PurchaseBaseManager getPurchaseBaseManager() {
+        return purchaseBaseManager;
+    }
+
+    public void setPurchaseBaseManager(PurchaseBaseManager purchaseBaseManager) {
+        this.purchaseBaseManager = purchaseBaseManager;
+    }
+
+    public DictionaryRpc getDictionaryRpc() {
+        return dictionaryRpc;
+    }
+
+    public void setDictionaryRpc(DictionaryRpc dictionaryRpc) {
+        this.dictionaryRpc = dictionaryRpc;
+    }
+
+    public SerializeRpc getSerializeRpc() {
+        return serializeRpc;
+    }
+
+    public void setSerializeRpc(SerializeRpc serializeRpc) {
+        this.serializeRpc = serializeRpc;
+    }
+
+    public PersonalRpc getPersonalRpc() {
+        return personalRpc;
+    }
+
+    public void setPersonalRpc(PersonalRpc personalRpc) {
+        this.personalRpc = personalRpc;
+    }
+
+    public SurveyRpc getSurveyRpc() {
+        return surveyRpc;
+    }
+
+    public void setSurveyRpc(SurveyRpc surveyRpc) {
+        this.surveyRpc = surveyRpc;
+    }
+
+    public HouseRpc getHouseRpc() {
+        return houseRpc;
+    }
+
+    public void setHouseRpc(HouseRpc houseRpc) {
+        this.houseRpc = houseRpc;
+    }
+
+    public OperateLogRpc getOperateLogRpc() {
+        return operateLogRpc;
+    }
+
+    public void setOperateLogRpc(OperateLogRpc operateLogRpc) {
+        this.operateLogRpc = operateLogRpc;
+    }
+
+    public DeptRpc getDeptRpc() {
+        return deptRpc;
+    }
+
+    public void setDeptRpc(DeptRpc deptRpc) {
+        this.deptRpc = deptRpc;
+    }
+
+    public Map<String, String> getRemindMap() {
+        return remindMap;
+    }
+
+    public void setRemindMap(Map<String, String> remindMap) {
+        this.remindMap = remindMap;
+    }
+
+    public RemindRpc getRemindRpc() {
+        return remindRpc;
+    }
+
+    public void setRemindRpc(RemindRpc remindRpc) {
+        this.remindRpc = remindRpc;
+    }
+
+    public StatisticsManager getStatisticsManager() {
+        return statisticsManager;
+    }
+
+    public void setStatisticsManager(StatisticsManager statisticsManager) {
+        this.statisticsManager = statisticsManager;
+    }
+}

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans 
+	http://www.springframework.org/schema/beans/spring-beans.xsd
+	http://www.springframework.org/schema/task 
+	http://www.springframework.org/schema/task/spring-task.xsd"
+	default-autowire="byName">
+	
+	<bean class="com.taobao.pamirs.schedule.strategy.TBScheduleManagerFactory" id="scheduleManagerFactory" init-method="init">
+		<property name="zkConfig">
+			<map>
+			    <!-- zk注册中心地址 -->
+				<entry key="zkConnectString" value="${schedule.zookeeper.address}"/>
+			    <!-- 定时任务根目录，任意指定，调度控制台配置时对应 -->
+				<entry key="rootPath" value="${schedule.root.catalog}"/>
+			    <!-- 超时配置 -->
+				<entry key="zkSessionTimeout" value="${schedule.timeout}"/>
+			    <!-- 账户，任意指定，调度控制台配置时对应 -->
+				<entry key="userName" value="${schedule.username}"/>
+			    <!-- 密码，任意指定，调度控制台配置时对应 -->
+				<entry key="password" value="${schedule.password}"/>
+				<!-- 是否检查父路径[true=检查,false=不检查] -->
+				<entry key="isCheckParentPath" value="true"/>
+			</map>
+		</property>
+	</bean>
+</beans>

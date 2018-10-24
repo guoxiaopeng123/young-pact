@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="RentTurnCost">
+    <typeAlias alias="rentTurnCostDO" type="com.young.pact.domain.rentturncost.RentTurnCostDO" />
+    <typeAlias alias="rentTurnCostVO" type="com.young.pact.domain.rentturncost.RentTurnCostVO" />
+    <sql id="allFields">
+        id,relet_code as reletCode,customer_name as customerName,type,price,start_date as startDate,end_date as endDate,remark,
+        ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+    <sql id="tableName">
+        pact_rent_turn_cost
+    </sql>
+    
+    <!-- 保存转租协议转让费 -->
+    <insert id="saveRentTurnCost" parameterClass="rentTurnCostDO">
+        INSERT INTO
+        <include refid="RentTurnCost.tableName" />
+        (relet_code,customer_name,type,price,start_date,end_date,remark,
+        ip,gmt_create,gmt_create_name)
+        values(#reletCode#,#customerName#,#type#,#price#,#startDate#,#endDate#,#remark#,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+    </insert>
+    <!--根据协议编码查询转租协议转让费 -->
+    <select id="listTurnCostByReletCode" parameterClass="java.lang.String" resultClass="rentTurnCostVO">
+        select 
+          <include refid="RentTurnCost.allFields" />
+        from
+          <include refid="RentTurnCost.tableName" />
+        where relet_code = #reletCode# 
+    </select>
+    <!--根据协议编码删除转租协议转让费 -->
+    <delete id="removeRentTurnCost" parameterClass="java.lang.String">
+        DELETE
+        FROM
+           <include refid="RentTurnCost.tableName" />
+        WHERE
+            relet_code = #reletCode#
+    </delete>
+</sqlMap>

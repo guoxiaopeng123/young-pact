@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="RentRoom">
+    <!-- 实体类别名 -->
+    <typeAlias alias="rentRoomDO" type="com.young.pact.domain.rentroom.RentRoomDO" />
+    <typeAlias alias="rentRoomQuery" type="com.young.pact.domain.rentroom.RentRoomQuery" />
+    <typeAlias alias="rentRoomVO" type="com.young.pact.domain.rentroom.RentRoomVO" />
+    <!-- 所有字段 -->
+    <sql id="allFields">
+       id,room_code as roomCode,room_no as roomNo,shs_code as shsCode,rent_pact_code as 
+       rentPactCode,house_code as houseCode,style,room_acreage as roomAcreage,orientation,count,
+       floor_price as floorPrice,price,monthly_price as monthlyPrice,quarterly_price as quarterlyPrice,
+       channel_monthly as channelMonthly,channel_quarterly as channelQuarterly,property_money as 
+       propertyMoney,water_money as waterMoney,heating_money as heatingMoney,service_money as serviceMoney,
+       card_deposit as cardDeposit,key_deposit as keyDeposit,management_money as managementMoney,
+       feature,room_deploy as roomDeploy,public_deploy as publicDeploy,rent_way as rentWay,
+       stock_state as stockState,sale_state as saleState,decoration_state as decorationState,
+       is_purchase as isPurchase,rent_time as rentTime,vacant_days as vacantDays,vacant_count as vacantCount,
+       floor,all_floor as allFloor,address,internet_fee as internetFee,
+       ip,gmt_create as `create`,gmt_modified as modified,gmt_create_name as createName,gmt_modified_name as modifiedName   
+    </sql>
+    <!-- 表名 -->
+    <sql id="tableName">
+        pact_rent_room
+    </sql>
+    <!-- 插入托出房间基本信息 -->
+    <insert id="saveRentRoom" parameterClass="rentRoomDO">
+        INSERT INTO
+        <include refid="RentRoom.tableName" />
+        (room_code,room_no,shs_code,rent_pact_code,house_code,style,room_acreage,orientation,count,
+        floor_price,price,monthly_price,quarterly_price,channel_monthly,channel_quarterly,property_money,water_money,heating_money,
+        service_money,card_deposit,key_deposit,management_money,feature,room_deploy,public_deploy,rent_way,stock_state,sale_state,
+        decoration_state,is_purchase,rent_time,vacant_days,vacant_count,floor,all_floor,address,internet_fee,
+        ip,gmt_create,gmt_modified,gmt_create_name,gmt_modified_name)
+        VALUES
+        (#roomCode#,#roomNo#,#shsCode#,#rentPactCode#,#houseCode#,#style#,#roomAcreage#,#orientation#,#count#,
+        #floorPrice#,#price#,#monthlyPrice#,#quarterlyPrice#,#channelMonthly#,#channelQuarterly#,#propertyMoney#,#waterMoney#,#heatingMoney#,
+        #serviceMoney#,#cardDeposit#,#keyDeposit#,#managementMoney#,#feature#,#roomDeploy#,#publicDeploy#,#rentWay#,#stockState#,
+        #saleState#,#decorationState#,#isPurchase#,#rentTime#,#vacantDays#,#vacantCount#,#floor#,#allFloor#,#address#,#internetFee#,
+        #ip#,NOW(),#modified#,#createName#,#modifiedName#)
+        <selectKey resultClass="long" keyProperty="id">
+            SELECT @@IDENTITY AS id
+        </selectKey>
+    </insert>
+    <!-- 根据托出合同编码查询房间-->
+    <select id="getRommByRentCode" parameterClass="java.lang.String" resultClass="rentRoomVO">
+        select 
+             <include refid="RentRoom.allFields"/>
+        FROM
+             <include refid="RentRoom.tableName"/> 
+        WHERE
+             rent_pact_code = #rentPactCode#       
+             LIMIT 1             
+    </select>
+    <!-- 根据托出合同编码删除房间 -->
+    <delete id="removeRentRoom" parameterClass="java.lang.String">
+        DELETE FROM 
+            <include refid="RentRoom.tableName" /> 
+        WHERE rent_pact_code = #rentPactCode#
+    </delete>
+     <!-- 根据托房间编码修改房间 -->
+    <update id="updateRoomByRoomCode" parameterClass="rentRoomDO" >
+         UPDATE
+        <include refid="RentRoom.tableName" />
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#
+        <isNotNull property="stockState" prepend=",">
+            stock_state=#stockState#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE room_code=#roomCode#
+    </update>
+    
+    <!-- 根据解约协议编码获取房间信息 -->
+    <select id="getByDissolutionCode" parameterClass="java.lang.String" resultClass="rentRoomVO">
+        select 
+             rm.id,rm.room_code roomCode,rm.room_no roomNo,rm.shs_code shsCode,rm.rent_pact_code rentPactCode,
+             rm.house_code houseCode
+        FROM
+             <include refid="RentRoom.tableName"/> rm
+        LEFT JOIN pact_rent_termination  rt
+        ON rm.rent_pact_code = rt.pirmary_pact_code
+        WHERE
+             rt.dissolution_code = #dissolutionCode#  
+        LIMIT 1                  
+    </select>
+</sqlMap>

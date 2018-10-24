@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="CommonMeterReadPic">
+	<typeAlias alias="commonMeterReadPicDO" type="com.young.pact.domain.commonmeterread.CommonMeterReadPicDO" />
+	<typeAlias alias="commonMeterReadPicVO" type="com.young.pact.domain.commonmeterread.CommonMeterReadPicVO" />
+	<sql id="allFields">
+	    id,meter_read_id,url,sort,ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		pact_common_meter_read_pic
+	</sql>
+	
+	<!-- 保存物品照片 -->
+	<insert id="saveCommonMeterReadPic" parameterClass="commonMeterReadPicDO">
+	    INSERT INTO
+        <include refid="CommonMeterReadPic.tableName" />
+        (meter_read_id,url,sort,ip,gmt_create,gmt_create_name)
+        values(#meterReadId#,#url#,#sort#,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	<!-- 根据抄表id查询抄表照片集合 -->
+	<select id="listMeterReadByMeterId" parameterClass="java.lang.Long" resultClass="commonMeterReadPicVO">
+	   select  id,meter_read_id AS meterReadId ,url,sort
+	   FROM pact_common_meter_read_pic
+	   where 
+	   meter_read_id=#meterReadId#
+	</select>
+	<!-- 根据抄表id删除抄表照片集合 -->
+	<delete id="removeMeterReadByMeterId" parameterClass="java.lang.Long">
+	   DELETE
+       FROM
+            pact_common_meter_read_pic 
+       where 
+       meter_read_id=#meterReadId#
+	</delete>
+</sqlMap>

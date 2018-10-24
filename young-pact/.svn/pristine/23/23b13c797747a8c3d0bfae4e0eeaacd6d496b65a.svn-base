@@ -1,0 +1,6 @@
+tfs.maxWaitThread=100
+tfs.timeout=2000
+tfs.nsip=192.168.1.154:8108
+tfs.tfsClusterIndex=1
+tfs.maxCacheItemCount=10000
+tfs.maxCacheTime=5000

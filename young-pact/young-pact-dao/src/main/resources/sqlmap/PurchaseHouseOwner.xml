@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="PurchaseHouseOwner">
+	<typeAlias alias="purchaseHouseOwnerDO" type="com.young.pact.domain.purchasehouse.PurchaseHouseOwnerDO" />
+	<typeAlias alias="purchaseHouseOwnerVO" type="com.young.pact.domain.purchasehouse.PurchaseHouseOwnerVO" />
+	<typeAlias alias="purchaseHouseOwnerQuery" type="com.young.pact.domain.purchasehouse.PurchaseHouseOwnerQuery" />
+	<sql id="allFields">
+	   id,purchase_code,owner_code,name,sex,tel,spare_tel,certificate_type,certificate_number,birthday,email,
+	   wechat,address,certificate_pic,is_agent,payee_name,payee_account,payee_bank,payee_opening_bank,payee_tel,
+	   payee_prove,agent_name,agent_sex,agent_tel,agent_spare_tel,agent_certificate_type,agent_certificate_number,
+	   agent_birthday,agent_email,agent_wechat,agent_certificate_pic,agent_address,agent_prove,ip,gmt_create,
+	   gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		pact_purchase_house_owner
+	</sql>
+	
+	<!-- 保存托进业主信息 -->
+	<insert id="savePurchaseHouseOwner" parameterClass="purchaseHouseOwnerDO">
+	    INSERT INTO
+        <include refid="PurchaseHouseOwner.tableName" />
+        (purchase_code,owner_code,name,sex,tel,spare_tel,certificate_type,certificate_number,birthday,email,
+       wechat,address,certificate_pic,is_agent,payee_name,payee_account,payee_bank,payee_opening_bank,payee_tel,
+       payee_prove,agent_name,agent_sex,agent_tel,agent_spare_tel,agent_certificate_type,agent_certificate_number,
+       agent_birthday,agent_email,agent_wechat,agent_certificate_pic,agent_address,agent_prove,ip,gmt_create,
+       gmt_create_name)
+        values(#purchaseCode#,#ownerCode#,#name#,#sex#,#tel#,#spareTel#,#certificateType#,#certificateNumber#,#birthday#,#email#,
+       #wechat#,#address#,#certificatePic#,#isAgent#,#payeeName#,#payeeAccount#,#payeeBank#,#payeeOpeningBank#,#payeeTel#,
+       #payeeProve#,#agentName#,#agentSex#,#agentTel#,#agentSpareTel#,#agentCertificateType#,#agentCertificateNumber#,
+       #agentBirthday#,#agentEmail#,#agentWechat#,#agentCertificatePic#,#agentAddress#,#agentProve#,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 根据托进合同编码查询托进合同业主信息 -->
+	<select id="getPurchaseHouseOwner" parameterClass="java.lang.String" resultClass="purchaseHouseOwnerVO">
+	    SELECT
+		    id,purchase_code purchaseCode,owner_code ownerCode,`name`,sex,tel,spare_tel spareTel,certificate_type certificateType,certificate_number certificateNumber,birthday,email,
+	       wechat,address,certificate_pic certificatePic,is_agent isAgent,payee_name payeeName,payee_account payeeAccount,payee_bank payeeBank,payee_opening_bank payeeOpeningBank,payee_tel payeeTel,
+	       payee_prove payeeProve,agent_name agentName,agent_sex agentSex,agent_tel agentTel,agent_spare_tel agentSpareTel,agent_certificate_type agentCertificateType,agent_certificate_number agentCertificateNumber,
+	       agent_birthday agentBirthday,agent_email agentEmail,agent_wechat agentWechat,agent_certificate_pic agentCertificatePic,agent_address agentAddress,agent_prove agentProve,gmt_create `create`,
+	       gmt_create_name createName
+		FROM
+		    <include refid="PurchaseHouseOwner.tableName" />
+		WHERE
+		    purchase_code = #purchaseCode#
+		LIMIT 1
+	</select>
+	
+	<!-- 根据托进合同编码删除托进合同业主信息 -->
+	<delete id="removePurchaseHouseOwner" parameterClass="java.lang.String">
+	    DELETE FROM <include refid="PurchaseHouseOwner.tableName" /> WHERE purchase_code = #purchaseCode#
+	</delete>
+	
+	<!-- 修改托进合同业主信息 -->
+	<update id="updatePurchaseHouseOwner" parameterClass="purchaseHouseOwnerDO">
+	    UPDATE
+            <include refid="PurchaseHouseOwner.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="name">name = #name#</isNotNull>
+        <isNotNull prepend="," property="sex">sex = #sex#</isNotNull>
+        <isNotNull prepend="," property="tel">tel = #tel#</isNotNull>
+        <isNotNull prepend="," property="spareTel">spare_tel = #spareTel#</isNotNull>
+        <isNotNull prepend="," property="certificateType">certificate_type = #certificateType#</isNotNull>
+        <isNotNull prepend="," property="certificateNumber">certificate_number = #certificateNumber#</isNotNull>
+        <isNotNull prepend="," property="birthday">birthday = #birthday#</isNotNull>
+        <isNotNull prepend="," property="email">email = #email#</isNotNull>
+        <isNotNull prepend="," property="wechat">wechat = #wechat#</isNotNull>
+        <isNotNull prepend="," property="address">address = #address#</isNotNull>
+        <isNotNull prepend="," property="certificatePic">certificate_pic = #certificatePic#</isNotNull>
+        <isNotNull prepend="," property="isAgent">is_agent = #isAgent#</isNotNull>
+        <isNotNull prepend="," property="payeeName">payee_name = #payeeName#</isNotNull>
+        <isNotNull prepend="," property="payeeAccount">payee_account = #payeeAccount#</isNotNull>
+        <isNotNull prepend="," property="payeeBank">payee_bank = #payeeBank#</isNotNull>
+        <isNotNull prepend="," property="payeeOpeningBank">payee_opening_bank = #payeeOpeningBank#</isNotNull>
+        <isNotNull prepend="," property="payeeTel">payee_tel = #payeeTel#</isNotNull>
+        <isNotNull prepend="," property="payeeProve">payee_prove = #payeeProve#</isNotNull>
+        <isNotNull prepend="," property="agentName">agent_name = #agentName#</isNotNull>
+        <isNotNull prepend="," property="agentSex">agent_sex = #agentSex#</isNotNull>
+        <isNotNull prepend="," property="agentTel">agent_tel = #agentTel#</isNotNull>
+        <isNotNull prepend="," property="agentSpareTel">agent_spare_tel = #agentSpareTel#</isNotNull>
+        <isNotNull prepend="," property="agentCertificateType">agent_certificate_type = #agentCertificateType#</isNotNull>
+        <isNotNull prepend="," property="agentCertificateNumber">agent_certificate_number = #agentCertificateNumber#</isNotNull>
+        <isNotNull prepend="," property="agentBirthday">agent_birthday = #agentBirthday#</isNotNull>
+        <isNotNull prepend="," property="agentEmail">agent_email = #agentEmail#</isNotNull>
+        <isNotNull prepend="," property="agentWechat">agent_wechat = #agentWechat#</isNotNull>
+        <isNotNull prepend="," property="agentCertificatePic">agent_certificate_pic = #agentCertificatePic#</isNotNull>
+        <isNotNull prepend="," property="agentAddress">agent_address = #agentAddress#</isNotNull>
+        <isNotNull prepend="," property="agentProve">agent_prove = #agentProve#</isNotNull>
+        <isNotNull prepend="," property="ip">ip = #ip#</isNotNull>
+        WHERE purchase_code = #purchaseCode#
+	</update>
+</sqlMap>

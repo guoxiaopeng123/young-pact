@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="Declare">
+    <typeAlias alias="declareDO" type="com.young.pact.domain.declare.DeclareDO" />
+    <typeAlias alias="declareQuery" type="com.young.pact.domain.declare.DeclareQuery" />
+    <typeAlias alias="declareVO" type="com.young.pact.domain.declare.DeclareVO" />
+    <sql id="allFields">
+        id,declare_code AS declareCode,survey_code AS surveyCode,house_code AS houseCode,address,decoration,configure,rent_price AS rentPrice,
+        period,measure_period AS measurePeriod,free_period AS freePeriod,cycle,room_number AS roomNumber,rent_mode AS rentMode,decoration_cost AS decorationCost,
+        interest,manage_cost AS manageCost,interest_cost AS interestCost,income,spending,gross_profit AS grossProfit,cost_cycle AS costCycle,maori,state,type,
+        user_pin AS userPin,dept_name AS deptName,dept_code as deptCode,user_name AS userName,survey_info AS surveyInfo,survey_goods AS surveyGoods,survey_goods_pic AS surveyGoodsPic,survey_pic AS surveyPic,
+        month_pay_interest as monthPayInterest,decorate_period AS decoratePeriod,rent_period AS rentPeriod,vacant_cost AS vacantCost,
+        ip,gmt_create as `create`,gmt_modified as modified,gmt_create_name as createName,gmt_modified_name as modifiedName   
+    </sql>
+    <sql id="tableName">
+        pact_declare
+    </sql>
+    
+    <!-- 保存申报 -->
+    <insert id="saveDeclare" parameterClass="declareDO" >
+        insert into
+        <include refid="Declare.tableName" />
+        (declare_code,survey_code,house_code,address,decoration,configure,rent_price,
+        period,measure_period,free_period,cycle,room_number,rent_mode,decoration_cost,
+        interest,manage_cost,interest_cost,income,spending,gross_profit,cost_cycle,maori,state,type,
+        user_pin,dept_name,dept_code,user_name,survey_info,survey_goods,survey_goods_pic,survey_pic,month_pay_interest,decorate_period,rent_period,vacant_cost,
+        ip,gmt_create,gmt_create_name)
+        values(#declareCode#,#surveyCode#,#houseCode#,#address#,#decoration#,#configure#,#rentPrice#,
+        #period#,#measurePeriod#,#freePeriod#,#cycle#,#roomNumber#,#rentMode#,#decorationCost#,
+        #interest#,#manageCost#,#interestCost#,#income#,#spending#,#grossProfit#,#costCycle#,#maori#,#state#,#type#,
+        #userPin#,#deptName#,#deptCode#,#userName#,#surveyInfo#,#surveyGoods#,#surveyGoodsPic#,#surveyPic#,
+        #monthPayInterest#,#decoratePeriod#,#rentPeriod#,#vacantCost#,
+        #ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+    </insert>
+    <!-- 查询申报总数 -->
+    <select id="countDeclare" parameterClass="declareQuery" resultClass="java.lang.Integer">
+     select 
+        count(decl.id)
+        from 
+        pact_declare decl
+        where 1=1
+        <isNotEmpty property="userPin" prepend="and">
+            decl.user_pin=#userPin#
+        </isNotEmpty>
+        <isNotEmpty property="deptName" prepend="and">
+            decl.dept_name=#deptName#
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend="and">
+            decl.state=#state#
+        </isNotEmpty>
+        <isNotEmpty property="houseCode" prepend="and">
+            decl.house_code=#houseCode#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="and">
+             (
+                decl.house_code like concat('%',#keyword#,'%') or
+                decl.declare_code like concat('%',#keyword#,'%') or
+                decl.address like concat('%',#keyword#,'%') 
+              )
+        </isNotEmpty>
+        <isNotEmpty property="scope" >
+             <isEqual property="scope" compareValue="1" prepend="and">
+                 user_pin = #userPin#
+             </isEqual>
+             <isEqual property="scope" compareValue="2" prepend="and">
+                 dept_code = #deptCode#
+             </isEqual>
+             <isEqual property="scope" compareValue="3" prepend="and">
+                 user_pin in
+                <iterate property="pinList" open="(" close=")" conjunction=",">
+                     #pinList[]#
+                </iterate>
+             </isEqual>
+             <isEqual property="scope" compareValue="4" prepend="and">
+                dept_code in
+                <iterate property="deptList" open="(" close=")" conjunction=",">
+                     #deptList[]#
+                </iterate>
+             </isEqual>
+        </isNotEmpty>
+    </select>
+    <!-- 查询申报列表 -->
+    <select id="listDeclare" parameterClass="declareQuery" resultClass="declareVO">
+        select 
+        decl.declare_code as declareCode,
+        decl.survey_code as surveyCode,
+        decl.house_code AS houseCode,
+        decl.address,
+        decl.dept_name deptName,
+        decl.user_name AS userName,
+        decl.rent_price AS rentPrice,
+        decl.period,
+        decl.measure_period measurePeriod,
+        decl.room_number AS roomNumber,
+        decl.income,
+        decl.spending,
+        decl.gross_profit AS grossProfit,
+        decl.cost_cycle AS costCycle,
+        decl.maori,
+        decl.state,
+        decl.gmt_create as `create`
+        from 
+        pact_declare decl
+        where 1=1
+        <isNotEmpty property="userPin" prepend="and">
+            decl.user_pin=#userPin#
+        </isNotEmpty>
+        <isNotEmpty property="deptName" prepend="and">
+            decl.dept_name=#deptName#
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend="and">
+            decl.state=#state#
+        </isNotEmpty>
+        <isNotEmpty property="houseCode" prepend="and">
+            decl.house_code=#houseCode#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="and">
+             (
+                decl.house_code like concat('%',#keyword#,'%') or
+                decl.declare_code like concat('%',#keyword#,'%') or
+                decl.address like concat('%',#keyword#,'%')
+              )
+        </isNotEmpty>
+        <isNotEmpty property="scope" >
+             <isEqual property="scope" compareValue="1" prepend="and">
+                 user_pin = #userPin#
+             </isEqual>
+             <isEqual property="scope" compareValue="2" prepend="and">
+                 dept_code = #deptCode#
+             </isEqual>
+             <isEqual property="scope" compareValue="3" prepend="and">
+                 user_pin in
+                <iterate property="pinList" open="(" close=")" conjunction=",">
+                     #pinList[]#
+                </iterate>
+             </isEqual>
+             <isEqual property="scope" compareValue="4" prepend="and">
+                dept_code in
+                <iterate property="deptList" open="(" close=")" conjunction=",">
+                     #deptList[]#
+                </iterate>
+             </isEqual>
+        </isNotEmpty>
+        ORDER BY decl.gmt_create DESC LIMIT #startRow#,#pageSize#
+    </select>
+    <!-- 查询申报详情 -->
+    <select id="getDeclareByDeclareCode" parameterClass="java.lang.String" resultClass="declareVO">
+        select  
+        <include refid="Declare.allFields" />
+        from 
+        <include refid="Declare.tableName" />
+        where declare_code=#declareCode#
+        LIMIT 1   
+    </select>
+    <!-- 条件查询申报 集合-->
+    <select id="listDeclareByParam" parameterClass="declareQuery" resultClass="declareVO">
+        select 
+        decl.declare_code as declareCode,
+        decl.house_code AS houseCode,
+        decl.address,
+        decl.dept_name deptName,
+        decl.user_name AS userName,
+        decl.rent_price AS rentPrice,
+        decl.period,
+        decl.room_number AS roomNumber,
+        decl.income,
+        decl.spending,
+        decl.gross_profit AS grossProfit,
+        decl.cost_cycle AS costCycle,
+        decl.maori,
+        decl.state,
+        decl.gmt_create as `create`
+        from 
+        pact_declare decl
+        where 1=1
+        <isNotEmpty property="houseCode" prepend="and">
+            decl.house_code=#houseCode#
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend="and">
+            decl.state=#state#
+        </isNotEmpty>
+    </select>
+    <!-- 修改申报 审核状态-->
+    <update id="updateDeclareState" parameterClass="declareDO">
+        UPDATE
+        pact_declare
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#,state=#state#
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        where declare_code=#declareCode#
+    </update>
+    <!-- 根据房源编码查询未审核状态的申报数量-->
+    <select id="countUnauditedDeclare" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+       SELECT
+		    count(d.id)
+	   FROM
+		    pact_declare d
+	   WHERE
+		    d.house_code =#houseCode# and d.state=1
+    </select>
+</sqlMap>

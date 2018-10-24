@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:p="http://www.springframework.org/schema/p"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+    <bean id="rocketmqClient" class="com.tools.common.rocketmq.factory.RocketmqClientFactoryBean">
+        <property name="namesrvAddr" value="${mq.namesrvAddr}" />
+        <property name="instanceName" value="young_pact_service" />
+        <property name="consumeMessageBatchMaxSize" value="10" />
+        <!-- 组名 -->
+        <property name="groupName">
+            <map>
+                <entry key="producterGroupName" value="producterGroupName_young_pact_service" />
+                <entry key="consumerGroupName" value="consumerGroupName_young_pact_service" />
+            </map>
+        <!-- 消费者或生成者或即消费者又生产者 -->
+        </property>
+        <property name="isFlag" value="producter" />
+
+        <!-- 消费的TOPIC 和TAG -->
+        <property name="topicQueue">
+            <!-- 根据实际情况自定义 -->
+            <map>
+                <entry key="youngShortMsg" value-ref="tag" />
+            </map>
+        </property>
+
+        <!-- ***************************自定义部分****************************************** -->
+        <!-- 生产消息回调 -->
+        <property name="sendCallback" ref="sendCallback" />
+    </bean>
+    <!-- 发送监听成功和失败的处理 -->
+    <bean id="sendCallback" class="com.young.pact.service.listener.SendListenter" />
+    <!-- 定义需消费的tcpic -->
+    <bean id="tag" class="java.util.ArrayList">
+        <constructor-arg index="0">
+            <list>
+                <!-- 如果全部使用* -->
+                <value>*</value>
+                   <!-- <value>*</value> -->
+                   <!-- <value>readtel</value> -->
+            </list>
+        </constructor-arg>
+    </bean>
+    <!-- 定义需消费的tcpic 
+    <bean id="topic2Tag" class="java.util.ArrayList"> 
+        <constructor-arg index="1"> <list> 如果全部使用*<value>*</value> <value>tag1</value> 
+        <value>tag2</value> <value>tag3</value> </list> </constructor-arg> </bean> -->
+</beans>

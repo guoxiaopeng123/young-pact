@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="PurchaseRentfree">
+	<typeAlias alias="purchaseRentfreeDO" type="com.young.pact.domain.purchaserentfree.PurchaseRentfreeDO" />
+	<typeAlias alias="purchaseRentfreeVO" type="com.young.pact.domain.purchaserentfree.PurchaseRentfreeVO" />
+	<typeAlias alias="purchaseRentfreeQuery" type="com.young.pact.domain.purchaserentfree.PurchaseRentfreeQuery" />
+	<sql id="allFields">
+	    id,purchase_code,rentfree_start,rentfree_end,period_start,period_end,period_days,period_price,ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		pact_purchase_rentfree
+	</sql>
+	
+	<!-- 保存托进合同免租期信息 -->
+	<insert id="savePurchaseRentfree" parameterClass="purchaseRentfreeDO">
+	    INSERT INTO
+        <include refid="PurchaseRentfree.tableName" />
+        (purchase_code,rentfree_start,rentfree_end,period_start,period_end,period_days,period_price,ip,gmt_create,gmt_create_name)
+        values(#purchaseCode#,#rentfreeStart#,#rentfreeEnd#,#periodStart#,#periodEnd#,#periodDays#,#periodPrice#,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 根据托进合同编码查询托进合同免租期信息集合 -->
+	<select id="listPurchaseRentfree" parameterClass="java.lang.String" resultClass="purchaseRentfreeVO">
+	    SELECT
+		    id,purchase_code purchaseCode,rentfree_start rentfreeStart,rentfree_end rentfreeEnd,period_start periodStart,
+		    period_end periodEnd,period_days periodDays,period_price periodPrice,gmt_create `create`,gmt_create_name createName
+		FROM
+		    <include refid="PurchaseRentfree.tableName" />
+		WHERE
+		    purchase_code = #purchaseCode#
+	</select>
+	
+	<!-- 根据托进合同编码删除免租期信息 -->
+	<delete id="removePurchaseRentfree" parameterClass="java.lang.String">
+	    DELETE FROM <include refid="PurchaseRentfree.tableName" /> WHERE purchase_code = #purchaseCode#
+	</delete>
+	
+	<!-- 删除 不包含 免租期集合数据 的免租期！！ -->
+	<delete id="removeNotPurchaseRentfree" parameterClass="java.util.Map">
+	    DELETE FROM <include refid="PurchaseRentfree.tableName" />
+        WHERE
+           id IN (
+                SELECT f3.id FROM
+                (
+				    SELECT f1.id FROM
+			            <include refid="PurchaseRentfree.tableName" /> f1
+			        WHERE
+			            f1.purchase_code = #purchaseCode#
+			        AND NOT EXISTS (
+			            SELECT
+			                f2.id
+			            FROM
+			                <include refid="PurchaseRentfree.tableName" /> f2
+			            WHERE
+			                f1.id = f2.id AND f2.purchase_code = #purchaseCode#
+			            AND f2.id IN 
+			            <isNotEmpty property="purchaseRentfreeList">
+			                <iterate open="(" close=")" conjunction="," property="purchaseRentfreeList">
+			                    #purchaseRentfreeList[].id#
+			                </iterate>
+			            </isNotEmpty>
+			            <isEmpty property="purchaseRentfreeList">
+			               (0)
+			            </isEmpty>
+			        )
+                ) f3
+           )
+	</delete>
+	
+	<!-- 修改免租期 -->
+	<update id="updatePurchaseRentfree" parameterClass="purchaseRentfreeDO">
+	    UPDATE
+            <include refid="PurchaseRentfree.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="rentfreeStart">rentfree_start = #rentfreeStart#</isNotNull>
+        <isNotNull prepend="," property="rentfreeEnd">rentfree_end = #rentfreeEnd#</isNotNull>
+        <isNotNull prepend="," property="periodStart">period_start = #periodStart#</isNotNull>
+        <isNotNull prepend="," property="periodEnd">period_end = #periodEnd#</isNotNull>
+        <isNotNull prepend="," property="periodDays">period_days = #periodDays#</isNotNull>
+        <isNotNull prepend="," property="periodPrice">period_price = #periodPrice#</isNotNull>
+        <isNotNull prepend="," property="ip">ip = #ip#</isNotNull>
+        WHERE id = #id# AND purchase_code = #purchaseCode#
+	</update>
+</sqlMap>

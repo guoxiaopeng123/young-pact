@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="RentCustomer">
+    <!-- 实体类别名 -->
+    <typeAlias alias="rentCustomerDO" type="com.young.pact.domain.rentcustomer.RentCustomerDO" />
+    <typeAlias alias="rentCustomerQuery" type="com.young.pact.domain.rentcustomer.RentCustomerQuery" />
+    <typeAlias alias="rentCustomerVO" type="com.young.pact.domain.rentcustomer.RentCustomerVO" />
+    <!-- 所有字段 -->
+    <sql id="allFields">
+       id,rent_pact_code as rentPactCode,renter_code as renterCode,customer_code as customerCode,demand_code as demandCode,
+       name,sex,tel,spare_tel as spareTel,id_type as idType,id_code as idCode,birthday,address,
+       wechat,native as nativePlance,marital_status as maritalStatus,label,monthly_income as monthlyIncome,
+       card_positive_url as cardPositiveUrl,card_back_url as cardBackUrl,profession,
+       company_name as companyName,company_address as companyAddress,emergency_contact as emergencyContact,
+       emergency_tel as emergencyTel,emergency_relation as emergencyRelation,
+       ip,gmt_create as `create`,gmt_modified as modified,gmt_create_name as createName,gmt_modified_name as modifiedName   
+    </sql>
+    <!-- 表名 -->
+    <sql id="tableName">
+        pact_rent_customer
+    </sql>
+    <!-- 插入租客基本信息 -->
+    <insert id="saveRentCustomer" parameterClass="rentCustomerDO">
+        INSERT INTO
+        <include refid="RentCustomer.tableName" />
+        (rent_pact_code,renter_code,customer_code,demand_code,name,sex,tel,spare_tel,id_type,id_code,birthday,
+         address,wechat,native,marital_status,label,monthly_income,card_positive_url,card_back_url,
+         profession,company_name,company_address,emergency_contact,emergency_tel,
+         emergency_relation,
+        ip,gmt_create,gmt_modified,gmt_create_name,gmt_modified_name)
+        VALUES
+        (#rentPactCode#,#renterCode#,#customerCode#,#demandCode#,#name#,#sex#,#tel#,#spareTel#,#idType#,#idCode#,
+        #birthday#,#address#,#wechat#,#nativePlance#,#maritalStatus#,#label#,#monthlyIncome#,
+        #cardPositiveUrl#,#cardBackUrl#,#profession#,#companyName#,#companyAddress#,
+        #emergencyContact#,#emergencyTel#,#emergencyRelation#,
+        #ip#,NOW(),#modified#,#createName#,#modifiedName#)
+        <selectKey resultClass="long" keyProperty="id">
+            SELECT @@IDENTITY AS id
+        </selectKey>
+    </insert>
+     <!-- 根据托出合同编码查询托出租客-->
+    <select id="getRentCustomerByPactCode" parameterClass="java.lang.String" resultClass="rentCustomerVO">
+        select 
+             <include refid="RentCustomer.allFields"/>
+        FROM
+             <include refid="RentCustomer.tableName"/> 
+        WHERE
+             rent_pact_code = #rentPactCode#                    
+    </select>
+     <!-- 根据托出合同编码修改租客-->
+    <update id="updateRentCustomerByPactCode" parameterClass="rentCustomerDO">
+        UPDATE
+        <include refid="RentCustomer.tableName"/> 
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="ip">
+             ip = #ip#
+        </isNotNull>
+        <isNotEmpty property="rentPactCode" prepend=",">
+             rent_pact_code=#rentPactCode#
+        </isNotEmpty>
+        <isNotEmpty property="name" prepend=",">
+             name=#name#
+        </isNotEmpty>
+        <isNotEmpty property="sex" prepend=",">
+             sex=#sex#
+        </isNotEmpty>
+        <isNotEmpty property="tel" prepend=",">
+             tel=#tel#
+        </isNotEmpty>
+        <isNotEmpty property="spareTel" prepend=",">
+             spare_tel=#spareTel#
+        </isNotEmpty>
+        <isNotEmpty property="idType" prepend=",">
+             id_type=#idType#
+        </isNotEmpty>
+        <isNotEmpty property="idCode" prepend=",">
+             id_code=#idCode#
+        </isNotEmpty>
+        <isNotEmpty property="birthday" prepend=",">
+             birthday=#birthday#
+        </isNotEmpty>
+        <isNotEmpty property="address" prepend=",">
+             address=#address#
+        </isNotEmpty>
+        <isNotEmpty property="wechat" prepend=",">
+             wechat=#wechat#
+        </isNotEmpty>
+        <isNotEmpty property="nativePlance" prepend=",">
+             native=#nativePlance#
+        </isNotEmpty>
+        <isNotEmpty property="maritalStatus" prepend=",">
+             marital_status=#maritalStatus#
+        </isNotEmpty>
+        <isNotEmpty property="label" prepend=",">
+             label=#label#
+        </isNotEmpty>
+        <isNotEmpty property="monthlyIncome" prepend=",">
+             monthly_income=#monthlyIncome#
+        </isNotEmpty>
+        <isNotEmpty property="cardPositiveUrl" prepend=",">
+             card_positive_url=#cardPositiveUrl#
+        </isNotEmpty>
+        <isNotEmpty property="cardBackUrl" prepend=",">
+             card_back_url=#cardBackUrl#
+        </isNotEmpty>
+        <isNotEmpty property="profession" prepend=",">
+             profession=#profession#
+        </isNotEmpty>
+        <isNotEmpty property="companyName" prepend=",">
+             company_name=#companyName#
+        </isNotEmpty>
+        <isNotEmpty property="companyAddress" prepend=",">
+             company_address=#companyAddress#
+        </isNotEmpty>
+        <isNotEmpty property="emergencyContact" prepend=",">
+             emergency_contact=#emergencyContact#
+        </isNotEmpty>
+        <isNotEmpty property="emergencyTel" prepend=",">
+             emergency_tel=#emergencyTel#
+        </isNotEmpty>
+        <isNotEmpty property="emergencyRelation" prepend=",">
+             emergency_relation=#emergencyRelation#
+        </isNotEmpty>
+        WHERE rent_pact_code=#rentPactCode# and renter_code=#renterCode#
+    </update>
+    <!-- 根据托出合同编码删除租客-->
+    <delete id="removeRentCustomer" parameterClass="java.lang.String">
+        DELETE FROM 
+            <include refid="RentCustomer.tableName" /> 
+        WHERE rent_pact_code=#rentPactCode#
+    </delete>
+</sqlMap>

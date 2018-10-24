@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans       http://www.springframework.org/schema/beans/spring-beans.xsd        
+	                       http://code.alibabatech.com/schema/dubbo        http://code.alibabatech.com/schema/dubbo/dubbo.xsd"
+	default-autowire="byName">
+	
+	<!-- 数据字典接口  -->
+    <dubbo:reference id="dictionaryRpcService" interface="com.young.system.api.service.rpc.DictionaryRpcService"
+        version="1.0" group="system-dictionary" timeout="60000" check="false"/>
+    <!-- 序列化接口 -->
+    <dubbo:reference id="serializeRpcService" interface="com.young.system.api.service.rpc.serialize.SerializeRpcService"
+        version="1.0" group="system-serialize" timeout="60000" check="false"/>
+    <!-- 权限接口 -->
+    <dubbo:reference id="actionRpcService" interface="com.young.system.api.service.rpc.action.ActionRpcService"
+        version="1.0" group="system-action" timeout="60000" check="false"/>
+    <!-- 部门接口 -->        
+    <dubbo:reference id="deptRpcService" interface="com.young.sso.api.service.rpc.dept.DeptRpcService"
+               version="1.0" group="group-dept" timeout="60000" check="false"/>
+    <!-- 客源接口 -->        
+    <dubbo:reference id="customerRpcService" interface="com.young.customer.api.service.rpc.CustomerRpcService"
+               version="1.0" group="customer-rpc" timeout="60000" check="false"/>
+    <!-- 客源需求接口 -->        
+    <dubbo:reference id="demandRpcService" interface="com.young.customer.api.service.rpc.DemandRpcService"
+               version="1.0" group="customer-rpc" timeout="60000" check="false"/>
+    <!-- 房源接口 -->        
+    <dubbo:reference id="houseRpcService" interface="com.young.house.api.service.rpc.house.HouseRpcService"
+               version="1.0" group="house-rpc" timeout="60000" check="false"/>
+    <!-- 生成系统房屋接口 -->        
+    <dubbo:reference id="houseRoomRpcService" interface="com.young.product.api.service.rpc.house.HouseRpcService"
+               version="1.0" group="group-house" timeout="60000" check="false"/>
+    <!-- 日志接口 -->        
+    <dubbo:reference id="operateLogRpcService" interface="com.young.follow.api.service.rpc.OperateLogRpcService"
+               version="1.0" group="group-operate" timeout="60000" check="false"/>
+    <!-- 用户接口 -->        
+    <dubbo:reference id="personalRpcService" interface="com.young.sso.api.service.rpc.personal.PersonalRpcService"
+               version="1.0" group="group-personal" timeout="60000" check="false"/>
+    <!-- 房间接口 -->        
+    <dubbo:reference id="roomRpcService" interface="com.young.product.api.service.rpc.room.RoomRpcService"
+               version="1.0" group="group-room" timeout="60000" check="false"/>
+    <!-- 实勘接口 -->        
+    <dubbo:reference id="surveyRpcService" interface="com.young.house.api.service.rpc.survey.SurveyRpcService"
+               version="1.0" group="house-rpc" timeout="60000" check="false"/>
+    <!-- 登录 -->
+    <dubbo:reference id="loginRpcService" interface="com.young.sso.api.service.rpc.login.LoginRpcService"
+                version="1.0" group="group-login" timeout="60000" check="false"/>
+    <!-- 用户和角色的关系 -->
+    <dubbo:reference id="roleGroupRpcService" interface="com.young.system.api.service.rpc.role.RoleGroupRpcService"
+              version="1.0" group="system-roleGroup" timeout="60000" check="false"/>
+</beans>		

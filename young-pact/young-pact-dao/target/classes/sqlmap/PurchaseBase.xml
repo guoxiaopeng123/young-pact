@@ -1,0 +1,896 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="PurchaseBase">
+	<typeAlias alias="purchaseBaseDO" type="com.young.pact.domain.purchasebase.PurchaseBaseDO" />
+	<typeAlias alias="purchaseBaseVO" type="com.young.pact.domain.purchasebase.PurchaseBaseVO" />
+	<typeAlias alias="purchaseBaseQuery" type="com.young.pact.domain.purchasebase.PurchaseBaseQuery" />
+	<sql id="allFields">
+	   id,purchase_code,paper_number,declare_code,entrust_start,entrust_end,entrust_period,house_date,pay_way,hosting_price,deposit,
+	   belonging,deposit_return_way,deal_date,remark,first_pay_date,pay_period_date,state,expire_state,deal_attr,termination_state,
+	   is_standard,rent_mode,is_delete,ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		pact_purchase_base
+	</sql>
+	
+	<!-- 保存托进合同 -->
+	<insert id="savePurchaseBase" parameterClass="purchaseBaseDO">
+	    INSERT INTO
+        <include refid="PurchaseBase.tableName" />
+        (purchase_code,paper_number,declare_code,entrust_start,entrust_end,entrust_period,house_date,pay_way,hosting_price,deposit,
+       belonging,deposit_return_way,deal_date,remark,first_pay_date,pay_period_date,state,expire_state,deal_attr,termination_state,
+       is_standard,rent_mode,is_delete,ip,gmt_create,gmt_create_name)
+        values(#purchaseCode#,#paperNumber#,#declareCode#,#entrustStart#,#entrustEnd#,#entrustPeriod#,#houseDate#,#payWay#,#hostingPrice#,#deposit#,
+       #belonging#,#depositReturnWay#,#dealDate#,#remark#,#firstPayDate#,#payPeriodDate#,1,1,1,1,
+       0,#rentMode#,0,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 根据申报编码查询是否有未删除的托进合同 -->
+	<select id="countByDeclareCode" parameterClass="java.lang.String" resultClass="int">
+	    SELECT
+		    COUNT(*)
+		FROM
+		    <include refid="PurchaseBase.tableName" />
+		WHERE
+		    declare_code = #declareCode# AND is_delete = 0
+	</select>
+	
+	<!-- 托进合同列表总个数 -->
+	<select id="countPurchaseBase" parameterClass="purchaseBaseQuery" resultClass="int">
+	    SELECT
+            COUNT(base.purchase_code)
+        FROM
+            <include refid="PurchaseBase.tableName" /> base
+        LEFT JOIN pact_purchase_house house ON house.purchase_code = base.purchase_code
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '运营管家'
+        ) belongerContract ON belongerContract.pactCode = base.purchase_code
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '租后管家'
+        ) belongerRent ON belongerRent.pactCode = base.purchase_code
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                    belonger.user_role = '签约管家'
+            ) belongerDeal ON belongerDeal.pactCode = base.purchase_code
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '工程监理'
+        ) belongerSupervision ON belongerSupervision.pactCode = base.purchase_code
+        LEFT JOIN pact_purchase_house_owner houseOwner ON houseOwner.purchase_code = base.purchase_code
+        WHERE
+            base.is_delete = 0
+            <isNotEmpty property="state" prepend="AND">
+                base.state = #state#
+            </isNotEmpty>
+            <isNotEmpty property="entrustEndMin" prepend="AND">
+                <![CDATA[base.entrust_end >= #entrustEndMin#]]>
+            </isNotEmpty>
+            <isNotEmpty property="entrustEndMax" prepend="AND">
+                <![CDATA[base.entrust_end <= #entrustEndMax#]]>
+            </isNotEmpty>
+            <isNotEmpty property="expireState" prepend="AND">
+                base.expire_state = #expireState#
+            </isNotEmpty>
+            <isNotEmpty property="terminationState" prepend="AND">
+                base.termination_state = #terminationState#
+            </isNotEmpty>
+            <isNotEmpty property="dealAttr" prepend="AND">
+                base.deal_attr = #dealAttr#
+            </isNotEmpty>
+            <isNotEmpty property="isStandard" prepend="AND">
+                base.is_standard = #isStandard#
+            </isNotEmpty>
+            <isNotEmpty property="operatingPin" prepend="AND">
+                belongerContract.userPin = #operatingPin#
+            </isNotEmpty>
+            <isNotEmpty property="servicePin" prepend="AND">
+                belongerRent.userPin = #servicePin#
+            </isNotEmpty>
+            <dynamic prepend="AND" open="(" close=")">
+                <isNotEmpty property="keyword" prepend="OR">
+                    base.purchase_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    house.address LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    house.house_code LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    houseOwner.`name` LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+                <isNotEmpty property="keyword" prepend="OR">
+                    houseOwner.tel LIKE CONCAT ('%',#keyword#,'%')
+                </isNotEmpty>
+            </dynamic>
+            <!-- 数据权限 -->
+            <isNotEmpty property="scope" >
+                 <!--  本人 -->
+                 <isEqual property="scope" compareValue="1" >
+                      <!--  运管管家 -->
+                      <isEqual property="position" compareValue="1" prepend="and">
+                           belongerContract.userPin=#userPin#
+                      </isEqual>
+                      <!--  租后管家 -->
+                      <isEqual property="position" compareValue="2" prepend="and">
+                           belongerRent.userPin=#userPin#
+                      </isEqual>
+                      <!--  其他 -->
+                      <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.userPin=#userPin# or
+                                belongerRent.userPin=#userPin# or
+                                belongerDeal.userPin=#userPin# or
+                                belongerSupervision.userPin=#userPin#
+                            )
+                      </isEqual>
+                 </isEqual>
+                 <!--  本部门 -->
+                 <isEqual property="scope" compareValue="2" >
+                      <!--  运管管家 -->
+                      <isEqual property="position" compareValue="1" prepend="and">
+                           belongerContract.deptCode=#deptCode#
+                      </isEqual>
+                      <!--  租后管家 -->
+                      <isEqual property="position" compareValue="2" prepend="and">
+                           belongerRent.deptCode=#deptCode#
+                      </isEqual>
+                      <!--  其他 -->
+                      <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.deptCode=#deptCode# or
+                                belongerRent.deptCode=#deptCode# or
+                                belongerDeal.deptCode=#deptCode# or
+                                belongerSupervision.deptCode=#deptCode#
+                            )
+                      </isEqual>
+                 </isEqual>
+                 <!--  本人及下属 -->
+                 <isEqual property="scope" compareValue="3" >
+                     <!--  运管管家 -->
+                      <isEqual property="position" compareValue="1" prepend="and">
+                            belongerContract.userPin in
+                            <iterate property="pinList" open="(" close=")" conjunction=",">
+                                 #pinList[]#
+                            </iterate>
+                      </isEqual>
+                      <!--  租后管家 -->
+                      <isEqual property="position" compareValue="2" prepend="and">
+                            belongerRent.userPin in
+                            <iterate property="pinList" open="(" close=")" conjunction=",">
+                                 #pinList[]#
+                            </iterate>
+                      </isEqual>
+                      <!--  其他 -->
+                      <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.userPin in  
+                                <iterate property="pinList" open="(" close=")" conjunction=",">
+                                     #pinList[]#
+                                </iterate>
+                                or
+                                belongerRent.userPin in
+                                <iterate property="pinList" open="(" close=")" conjunction=",">
+                                     #pinList[]#
+                                </iterate>
+                                or
+                                belongerDeal.userPin in
+                                <iterate property="pinList" open="(" close=")" conjunction=",">
+                                     #pinList[]#
+                                </iterate>
+                                or
+                                belongerSupervision.userPin in
+                                <iterate property="pinList" open="(" close=")" conjunction=",">
+                                     #pinList[]#
+                                </iterate>
+                            )
+                      </isEqual>
+                 </isEqual>
+                  <!--  本部门及下属部门 -->
+                 <isEqual property="scope" compareValue="4" >
+                      <!--  运管管家 -->
+                      <isEqual property="position" compareValue="1" prepend="and">
+                           belongerContract.deptCode in
+                           <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                           </iterate>
+                      </isEqual>
+                      <!--  租后管家 -->
+                      <isEqual property="position" compareValue="2" prepend="and">
+                           belongerRent.deptCode in
+                           <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                           </iterate>
+                      </isEqual>
+                      <!--  其他 -->
+                      <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+                                     #deptList[]#
+                                </iterate>
+                                or
+                                belongerRent.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+                                     #deptList[]#
+                                </iterate>
+                                or
+                                belongerDeal.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+                                     #deptList[]#
+                                </iterate>
+                                or
+                                belongerSupervision.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+                                     #deptList[]#
+                                </iterate>
+                            )
+                      </isEqual>
+                 </isEqual>
+            </isNotEmpty>
+	</select>
+	
+	<!-- 托进合同列表 -->
+	<select id="listPurchaseBase" parameterClass="purchaseBaseQuery" resultClass="purchaseBaseVO">
+	    SELECT
+		    base.purchase_code purchaseCode,house.house_code houseCode,house.address,base.entrust_start entrustStart,base.entrust_end entrustEnd,
+		    base.hosting_price hostingPrice,base.expire_state expireState,base.deal_attr dealAttr,base.termination_state terminationState,
+		    base.deal_date dealDate,base.gmt_create `create`,base.state,base.is_standard isStandard,base.rent_mode rentMode,
+		    belongerContract.userName operatingName,belongerContract.deptName operatingDeptName,
+		    belongerRent.userName serviceName,belongerRent.deptName serviceDeptName
+		FROM
+		    <include refid="PurchaseBase.tableName" /> base
+		LEFT JOIN pact_purchase_house house ON house.purchase_code = base.purchase_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '运营管家'
+		) belongerContract ON belongerContract.pactCode = base.purchase_code
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '租后管家'
+		) belongerRent ON belongerRent.pactCode = base.purchase_code
+		LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                    belonger.user_role = '签约管家'
+            ) belongerDeal ON belongerDeal.pactCode = base.purchase_code
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '工程监理'
+        ) belongerSupervision ON belongerSupervision.pactCode = base.purchase_code
+		LEFT JOIN pact_purchase_house_owner houseOwner ON houseOwner.purchase_code = base.purchase_code
+		WHERE
+		    base.is_delete = 0
+		    <isNotEmpty property="state" prepend="AND">
+                base.state = #state#
+            </isNotEmpty>
+		    <isNotEmpty property="entrustEndMin" prepend="AND">
+                <![CDATA[base.entrust_end >= #entrustEndMin#]]>
+            </isNotEmpty>
+		    <isNotEmpty property="entrustEndMax" prepend="AND">
+	            <![CDATA[base.entrust_end <= #entrustEndMax#]]>
+            </isNotEmpty>
+		    <isNotEmpty property="expireState" prepend="AND">
+		        base.expire_state = #expireState#
+            </isNotEmpty>
+		    <isNotEmpty property="terminationState" prepend="AND">
+		        base.termination_state = #terminationState#
+            </isNotEmpty>
+		    <isNotEmpty property="dealAttr" prepend="AND">
+		        base.deal_attr = #dealAttr#
+            </isNotEmpty>
+		    <isNotEmpty property="isStandard" prepend="AND">
+		        base.is_standard = #isStandard#
+            </isNotEmpty>
+		    <isNotEmpty property="operatingPin" prepend="AND">
+		        belongerContract.userPin = #operatingPin#
+            </isNotEmpty>
+		    <isNotEmpty property="servicePin" prepend="AND">
+		        belongerRent.userPin = #servicePin#
+            </isNotEmpty>
+            <dynamic prepend="AND" open="(" close=")">
+	            <isNotEmpty property="keyword" prepend="OR">
+	                base.purchase_code LIKE CONCAT ('%',#keyword#,'%')
+	            </isNotEmpty>
+	            <isNotEmpty property="keyword" prepend="OR">
+	                house.address LIKE CONCAT ('%',#keyword#,'%')
+	            </isNotEmpty>
+	            <isNotEmpty property="keyword" prepend="OR">
+	                house.house_code LIKE CONCAT ('%',#keyword#,'%')
+	            </isNotEmpty>
+	            <isNotEmpty property="keyword" prepend="OR">
+	                houseOwner.`name` LIKE CONCAT ('%',#keyword#,'%')
+	            </isNotEmpty>
+	            <isNotEmpty property="keyword" prepend="OR">
+	                houseOwner.tel LIKE CONCAT ('%',#keyword#,'%')
+	            </isNotEmpty>
+	        </dynamic>
+	        <!-- 数据权限 -->
+	        <isNotEmpty property="scope" >
+	             <!--  本人 -->
+	             <isEqual property="scope" compareValue="1" >
+                      <!--  运管管家 -->
+	                  <isEqual property="position" compareValue="1" prepend="and">
+	                       belongerContract.userPin=#userPin#
+	                  </isEqual>
+	                  <!--  租后管家 -->
+	                  <isEqual property="position" compareValue="2" prepend="and">
+	                       belongerRent.userPin=#userPin#
+	                  </isEqual>
+	                  <!--  其他 -->
+	                  <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.userPin=#userPin# or
+                                belongerRent.userPin=#userPin# or
+                                belongerDeal.userPin=#userPin# or
+                                belongerSupervision.userPin=#userPin#
+                            )
+                      </isEqual>
+	             </isEqual>
+	             <!--  本部门 -->
+	             <isEqual property="scope" compareValue="2" >
+	                  <!--  运管管家 -->
+                      <isEqual property="position" compareValue="1" prepend="and">
+                           belongerContract.deptCode=#deptCode#
+                      </isEqual>
+                      <!--  租后管家 -->
+                      <isEqual property="position" compareValue="2" prepend="and">
+                           belongerRent.deptCode=#deptCode#
+                      </isEqual>
+                      <!--  其他 -->
+                      <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.deptCode=#deptCode# or
+                                belongerRent.deptCode=#deptCode# or
+                                belongerDeal.deptCode=#deptCode# or
+                                belongerSupervision.deptCode=#deptCode#
+                            )
+                      </isEqual>
+	             </isEqual>
+	             <!--  本人及下属 -->
+	             <isEqual property="scope" compareValue="3" >
+	                 <!--  运管管家 -->
+                      <isEqual property="position" compareValue="1" prepend="and">
+                            belongerContract.userPin in
+                            <iterate property="pinList" open="(" close=")" conjunction=",">
+                                 #pinList[]#
+                            </iterate>
+                      </isEqual>
+                      <!--  租后管家 -->
+                      <isEqual property="position" compareValue="2" prepend="and">
+                            belongerRent.userPin in
+                            <iterate property="pinList" open="(" close=")" conjunction=",">
+                                 #pinList[]#
+                            </iterate>
+                      </isEqual>
+                      <!--  其他 -->
+                      <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.userPin in  
+	                            <iterate property="pinList" open="(" close=")" conjunction=",">
+	                                 #pinList[]#
+	                            </iterate>
+                                or
+                                belongerRent.userPin in
+                                <iterate property="pinList" open="(" close=")" conjunction=",">
+                                     #pinList[]#
+                                </iterate>
+                                or
+                                belongerDeal.userPin in
+                                <iterate property="pinList" open="(" close=")" conjunction=",">
+                                     #pinList[]#
+                                </iterate>
+                                or
+                                belongerSupervision.userPin in
+                                <iterate property="pinList" open="(" close=")" conjunction=",">
+                                     #pinList[]#
+                                </iterate>
+                            )
+                      </isEqual>
+	             </isEqual>
+	              <!--  本部门及下属部门 -->
+	             <isEqual property="scope" compareValue="4" >
+	                  <!--  运管管家 -->
+                      <isEqual property="position" compareValue="1" prepend="and">
+                           belongerContract.deptCode in
+	                       <iterate property="deptList" open="(" close=")" conjunction=",">
+	                         #deptList[]#
+                           </iterate>
+                      </isEqual>
+                      <!--  租后管家 -->
+                      <isEqual property="position" compareValue="2" prepend="and">
+                           belongerRent.deptCode in
+                           <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                           </iterate>
+                      </isEqual>
+                      <!--  其他 -->
+                      <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+			                         #deptList[]#
+			                    </iterate>
+                                or
+                                belongerRent.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+                                     #deptList[]#
+                                </iterate>
+                                or
+                                belongerDeal.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+                                     #deptList[]#
+                                </iterate>
+                                or
+                                belongerSupervision.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+                                     #deptList[]#
+                                </iterate>
+                            )
+                      </isEqual>
+	             </isEqual>
+	        </isNotEmpty>
+		ORDER BY base.entrust_start DESC LIMIT #startRow#,#pageSize#
+	</select>
+    <!-- 	查看登录人有没有某个拖进合同的查看权限  -->
+	<select id="getPermissions" parameterClass="purchaseBaseQuery" resultClass="purchaseBaseVO">
+	 SELECT
+            purchase_code purchaseCode,paper_number paperNumber,declare_code declareCode,entrust_start entrustStart,entrust_end entrustEnd,
+            entrust_period entrustPeriod,house_date houseDate,pay_way payWay,hosting_price hostingPrice,deposit,belonging,deposit_return_way depositReturnWay,
+            deal_date dealDate,remark,first_pay_date firstPayDate,pay_period_date payPeriodDate,state,expire_state expireState,deal_attr dealAttr,
+            termination_state terminationState,is_standard isStandard,gmt_create `create`,gmt_create_name createName
+        FROM
+            <include refid="PurchaseBase.tableName" />
+        WHERE
+            is_delete = 0 AND purchase_code = #purchaseCode#
+            <!-- 数据权限 -->
+            <isNotEmpty property="scope" >
+                 <!--  本人 -->
+                 <isEqual property="scope" compareValue="1" >
+                      <!--  运管管家 -->
+                      <isEqual property="position" compareValue="1" prepend="and">
+                           belongerContract.userPin=#userPin#
+                      </isEqual>
+                      <!--  租后管家 -->
+                      <isEqual property="position" compareValue="2" prepend="and">
+                           belongerRent.userPin=#userPin#
+                      </isEqual>
+                      <!--  其他 -->
+                      <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.userPin=#userPin# or
+                                belongerRent.userPin=#userPin# or
+                                belongerDeal.userPin=#userPin# or
+                                belongerSupervision.userPin=#userPin#
+                            )
+                      </isEqual>
+                 </isEqual>
+                 <!--  本部门 -->
+                 <isEqual property="scope" compareValue="2" >
+                      <!--  运管管家 -->
+                      <isEqual property="position" compareValue="1" prepend="and">
+                           belongerContract.deptCode=#deptCode#
+                      </isEqual>
+                      <!--  租后管家 -->
+                      <isEqual property="position" compareValue="2" prepend="and">
+                           belongerRent.deptCode=#deptCode#
+                      </isEqual>
+                      <!--  其他 -->
+                      <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.deptCode=#deptCode# or
+                                belongerRent.deptCode=#deptCode# or
+                                belongerDeal.deptCode=#deptCode# or
+                                belongerSupervision.deptCode=#deptCode#
+                            )
+                      </isEqual>
+                 </isEqual>
+                 <!--  本人及下属 -->
+                 <isEqual property="scope" compareValue="3" >
+                     <!--  运管管家 -->
+                      <isEqual property="position" compareValue="1" prepend="and">
+                            belongerContract.userPin in
+                            <iterate property="pinList" open="(" close=")" conjunction=",">
+                                 #pinList[]#
+                            </iterate>
+                      </isEqual>
+                      <!--  租后管家 -->
+                      <isEqual property="position" compareValue="2" prepend="and">
+                            belongerRent.userPin in
+                            <iterate property="pinList" open="(" close=")" conjunction=",">
+                                 #pinList[]#
+                            </iterate>
+                      </isEqual>
+                      <!--  其他 -->
+                      <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.userPin in  
+                                <iterate property="pinList" open="(" close=")" conjunction=",">
+                                     #pinList[]#
+                                </iterate>
+                                or
+                                belongerRent.userPin in
+                                <iterate property="pinList" open="(" close=")" conjunction=",">
+                                     #pinList[]#
+                                </iterate>
+                                or
+                                belongerDeal.userPin in
+                                <iterate property="pinList" open="(" close=")" conjunction=",">
+                                     #pinList[]#
+                                </iterate>
+                                or
+                                belongerSupervision.userPin in
+                                <iterate property="pinList" open="(" close=")" conjunction=",">
+                                     #pinList[]#
+                                </iterate>
+                            )
+                      </isEqual>
+                 </isEqual>
+                  <!--  本部门及下属部门 -->
+                 <isEqual property="scope" compareValue="4" >
+                      <!--  运管管家 -->
+                      <isEqual property="position" compareValue="1" prepend="and">
+                           belongerContract.deptCode in
+                           <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                           </iterate>
+                      </isEqual>
+                      <!--  租后管家 -->
+                      <isEqual property="position" compareValue="2" prepend="and">
+                           belongerRent.deptCode in
+                           <iterate property="deptList" open="(" close=")" conjunction=",">
+                             #deptList[]#
+                           </iterate>
+                      </isEqual>
+                      <!--  其他 -->
+                      <isEqual property="position" compareValue="3" prepend="and">
+                            (
+                                belongerContract.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+                                     #deptList[]#
+                                </iterate>
+                                or
+                                belongerRent.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+                                     #deptList[]#
+                                </iterate>
+                                or
+                                belongerDeal.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+                                     #deptList[]#
+                                </iterate>
+                                or
+                                belongerSupervision.deptCode in 
+                                <iterate property="deptList" open="(" close=")" conjunction=",">
+                                     #deptList[]#
+                                </iterate>
+                            )
+                      </isEqual>
+                 </isEqual>
+            </isNotEmpty>
+            
+        LIMIT 1
+	</select>
+	<!-- 根据托进合同编码查询托进合同详情 -->
+	<select id="getPurchaseBase" parameterClass="java.lang.String" resultClass="purchaseBaseVO">
+	    SELECT
+		    purchase_code purchaseCode,paper_number paperNumber,declare_code declareCode,entrust_start entrustStart,entrust_end entrustEnd,
+		    entrust_period entrustPeriod,house_date houseDate,pay_way payWay,hosting_price hostingPrice,deposit,belonging,deposit_return_way depositReturnWay,
+		    deal_date dealDate,remark,first_pay_date firstPayDate,pay_period_date payPeriodDate,state,expire_state expireState,deal_attr dealAttr,
+		    termination_state terminationState,is_standard isStandard,rent_mode rentMode,gmt_create `create`,gmt_create_name createName
+		FROM
+		    <include refid="PurchaseBase.tableName" />
+		WHERE
+            is_delete = 0 AND purchase_code = #purchaseCode#
+        LIMIT 1
+	</select>
+	
+	<!-- 根据托进合同编码删除托进合同-逻辑删除 -->
+	<update id="removePurchaseBase" parameterClass="purchaseBaseDO">
+	    UPDATE
+            <include refid="PurchaseBase.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="isDelete">
+            is_delete = #isDelete#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE purchase_code = #purchaseCode#
+	</update>
+	
+	<!-- 修改托进合同审核状态 -->
+	<update id="updateState" parameterClass="purchaseBaseDO">
+	    UPDATE
+            <include refid="PurchaseBase.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="state">
+            state = #state#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE purchase_code = #purchaseCode#
+        <isEqual property="state" compareValue="2" prepend="AND">
+            (state = 1 OR state = 4)
+        </isEqual>
+        <isEqual property="state" compareValue="3" prepend="AND">
+            state = 2
+        </isEqual>
+        <isEqual property="state" compareValue="4" prepend="AND">
+            state = 2
+        </isEqual>
+	</update>
+	
+	<!-- 修改托进合同 -->
+	<update id="updatePurchaseBase" parameterClass="purchaseBaseDO">
+	    UPDATE
+            <include refid="PurchaseBase.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="paperNumber">paper_number = #paperNumber#</isNotNull>
+        <isNotNull prepend="," property="entrustStart">entrust_start = #entrustStart#</isNotNull>
+        <isNotNull prepend="," property="entrustEnd">entrust_end = #entrustEnd#</isNotNull>
+        <isNotNull prepend="," property="entrustPeriod">entrust_period = #entrustPeriod#</isNotNull>
+        <isNotNull prepend="," property="houseDate">house_date = #houseDate#</isNotNull>
+        <isNotNull prepend="," property="payWay">pay_way = #payWay#</isNotNull>
+        <isNotNull prepend="," property="hostingPrice">hosting_price = #hostingPrice#</isNotNull>
+        <isNotNull prepend="," property="deposit">deposit = #deposit#</isNotNull>
+        <isNotNull prepend="," property="belonging">belonging = #belonging#</isNotNull>
+        <isNotNull prepend="," property="depositReturnWay">deposit_return_way = #depositReturnWay#</isNotNull>
+        <isNotNull prepend="," property="dealDate">deal_date = #dealDate#</isNotNull>
+        <isNotNull prepend="," property="remark">remark = #remark#</isNotNull>
+        <isNotNull prepend="," property="firstPayDate">first_pay_date = #firstPayDate#</isNotNull>
+        <isNotNull prepend="," property="payPeriodDate">pay_period_date = #payPeriodDate#</isNotNull>
+        <isNotNull prepend="," property="rentMode">rent_mode = #rentMode#</isNotNull>
+        <isNotNull prepend="," property="ip">ip = #ip#</isNotNull>
+        WHERE purchase_code = #purchaseCode# AND (state = 1 OR state = 4) AND is_delete = 0
+	</update>
+	<!-- 根据申报编码查询托进合同-->
+	<select id="listPurchaseBaseByParam" parameterClass="purchaseBaseQuery" resultClass="purchaseBaseVO">
+	    SELECT
+            base.purchase_code purchaseCode,
+            base.paper_number paperNumber,
+            base.declare_code declareCode,
+            base.entrust_start entrustStart,
+            base.entrust_end entrustEnd,
+            base.entrust_period entrustPeriod,
+            base.house_date houseDate,
+            base.pay_way payWay,
+            base.hosting_price hostingPrice,
+            base.deposit,
+            base.belonging,
+            base.deposit_return_way depositReturnWay,
+            base.deal_date dealDate,
+            base.remark,
+            base.first_pay_date firstPayDate,
+            base.pay_period_date payPeriodDate,
+            base.state,
+            base.expire_state expireState,
+            base.deal_attr dealAttr,
+            base.termination_state terminationState,
+            base.is_standard isStandard,
+            base.gmt_create `create`,
+            base.gmt_create_name createName,
+            base.gmt_modified modified,
+            belongerContract.userPin operatePin
+        FROM
+            <include refid="PurchaseBase.tableName" /> base
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '运营管家'
+        ) belongerContract ON belongerContract.pactCode = base.purchase_code
+        WHERE
+            base.is_delete = 0 
+        <isNotEmpty property="declareCode" prepend="and">
+            base.declare_code = #declareCode#
+        </isNotEmpty>    
+        <isNotEmpty property="state" prepend="and">
+            base.state = #state#
+        </isNotEmpty>   
+        <isNotEmpty property="dealAttr" prepend="and">
+            base.deal_attr = #dealAttr#
+        </isNotEmpty>    
+        <isNotEmpty property="dealStartDate" prepend="AND">
+           base.deal_date  <![CDATA[>= ]]>#dealStartDate#
+        </isNotEmpty>
+        <isNotEmpty property="dealEndDate" prepend="AND">
+           base.deal_date <![CDATA[ < ]]> #dealEndDate#
+        </isNotEmpty>
+	</select>
+	
+	<!-- 修改托进合同解约状态 -->
+	<update id="updateTerminationState" parameterClass="purchaseBaseDO">
+	    UPDATE
+            <include refid="PurchaseBase.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="expireState">
+            expire_state = #expireState#
+        </isNotNull>
+        <isNotNull prepend="," property="terminationState">
+            termination_state = #terminationState#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE purchase_code = #purchaseCode# AND is_delete = 0 
+        <isEqual property="expireState" compareValue="2" prepend="AND">
+            expire_state = 1
+        </isEqual>
+        <isEqual property="terminationState" compareValue="2" prepend="AND">
+            termination_state = 1
+        </isEqual>
+        <isEqual property="terminationState" compareValue="3" prepend="AND">
+            termination_state = 1
+        </isEqual>
+	</update>
+	<!-- 修改托进合同标准化状态 -->
+    <update id="updateStandard" parameterClass="purchaseBaseDO">
+        UPDATE
+            <include refid="PurchaseBase.tableName" />
+        SET gmt_modified = NOW(),gmt_modified_name = #modifiedName#
+        <isNotNull prepend="," property="isStandard">is_standard = #isStandard#</isNotNull>
+        <isNotNull prepend="," property="ip">ip = #ip#</isNotNull>
+        WHERE purchase_code = #purchaseCode# AND is_standard = 0 AND is_delete = 0
+    </update>
+    <!-- 查询录入合同超过24小时未提交审核的托进合同 -->
+    <select id="listUnsubmitted" parameterClass="purchaseBaseQuery" resultClass="purchaseBaseVO">
+        SELECT
+		    pur.purchase_code purchaseCode,
+		    belongerContract.userPin operatePin
+		FROM
+		    pact_purchase_base pur
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,
+		        belonger.user_pin userPin,
+		        belonger.user_name userName,
+		        belonger.dept_code deptCode,
+		        belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '运营管家'
+		) belongerContract ON belongerContract.pactCode = pur.purchase_code
+		WHERE
+		    pur.is_delete = 0 and pur.state = #state#
+		AND TIMESTAMPDIFF(HOUR, pur.gmt_create, NOW())  <![CDATA[ >= ]]> 24
+		AND TIMESTAMPDIFF(HOUR, pur.gmt_create, NOW())  <![CDATA[ < ]]> 48 
+     </select>
+     <!-- 查询托进合同提交审核后超过24小时没有审核通过或驳回的托进合同 -->
+     <select id="listUnReview" parameterClass="purchaseBaseQuery" resultClass="purchaseBaseVO">
+        SELECT
+            pur.purchase_code purchaseCode,
+            belongerContract.userPin operatePin
+        FROM
+            pact_purchase_base pur
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '运营管家'
+        ) belongerContract ON belongerContract.pactCode = pur.purchase_code
+        WHERE
+            pur.is_delete = 0 and pur.state = #state#
+        AND TIMESTAMPDIFF(HOUR, pur.gmt_modified, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, pur.gmt_modified, NOW())  <![CDATA[ < ]]> 48 
+     </select>
+     <!-- 查询托进合同审核通过后超过24小时未创建房间的托进合同集合 -->
+     <select id="listUnCreateRoom"  resultClass="purchaseBaseVO">
+        SELECT
+            pur.purchase_code purchaseCode,
+            belongerContract.userPin operatePin
+        FROM
+            pact_purchase_base pur
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '运营管家'
+        ) belongerContract ON belongerContract.pactCode = pur.purchase_code
+        WHERE
+            pur.is_delete = 0 and pur.state = 3 and pur.is_standard = 0
+        AND TIMESTAMPDIFF(HOUR, pur.gmt_modified, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, pur.gmt_modified, NOW())  <![CDATA[ < ]]> 48 
+     </select>
+     <!--  查询合同驳回后超过24小时未重新提交审核托进合同集合 -->
+     <select id="listRejectUnApply"  resultClass="purchaseBaseVO">
+        SELECT
+            base.purchase_code purchaseCode,
+            belongerContract.userPin operatePin
+        FROM
+            <include refid="PurchaseBase.tableName" /> base
+        LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,belonger.user_pin userPin,belonger.user_name userName,belonger.dept_code deptCode,belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '运营管家'
+        ) belongerContract ON belongerContract.pactCode = base.purchase_code
+        WHERE
+            base.is_delete = 0 
+            and base.state = #state#
+    </select>
+    <!--     查询托进到期时间距离今日还有60天的的托进合同 -->
+    <select id="listPurchaseExpir"  resultClass="purchaseBaseVO">
+        SELECT
+		    pur.purchase_code purchaseCode,
+		    belongerContract.userPin afterRentingPin,
+            belongerContract.userName afterRentingName,
+		    belongerContract.deptCode afterRentingDeptCode,
+		    belongerContract.deptName afterRentingDeptName
+		FROM
+		    pact_purchase_base pur
+		LEFT JOIN (
+		    SELECT
+		        belonger.pact_code pactCode,
+		        belonger.user_pin userPin,
+		        belonger.user_name userName,
+		        belonger.dept_code deptCode,
+		        belonger.dept_name deptName
+		    FROM
+		        pact_common_belonger belonger
+		    WHERE
+		        belonger.user_role = '租后管家'
+		) belongerContract ON belongerContract.pactCode = pur.purchase_code
+		WHERE
+		    pur.is_delete = 0
+		AND pur.state = 3
+		AND DATE_ADD(pur.entrust_end,INTERVAL 60 DAY)  <![CDATA[ < ]]> NOW()
+		AND pur.entrust_end <![CDATA[ > ]]> DATE_SUB(NOW(),INTERVAL 60 DAY )
+    </select>
+</sqlMap>

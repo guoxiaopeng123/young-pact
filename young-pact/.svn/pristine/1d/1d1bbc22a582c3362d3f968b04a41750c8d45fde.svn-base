@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:dubbo="http://code.alibabatech.com/schema/dubbo"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans       http://www.springframework.org/schema/beans/spring-beans.xsd        
+                           http://code.alibabatech.com/schema/dubbo        http://code.alibabatech.com/schema/dubbo/dubbo.xsd"
+    default-autowire="byName">
+    
+    <dubbo:application name="pact-rpc-client" />
+    
+    <!-- zk注册中心 -->
+    <dubbo:registry address="${dubbo.consumer.registry.address}" />
+    
+    <!-- 托进房源信息 -->
+    <dubbo:reference id="purchaseHouseRestService" interface="com.young.pact.api.service.rest.purchasehouse.PurchaseHouseRestService"
+                version="1.0" group="group-purchasehouse" timeout="60000" check="false"/>
+    <!-- 托进业主信息 -->
+    <dubbo:reference id="purchaseHouseOwnerRestService" interface="com.young.pact.api.service.rest.purchasehouse.PurchaseHouseOwnerRestService"
+                version="1.0" group="group-purchasehouse" timeout="60000" check="false"/>
+    <!-- 托进合同信息 -->
+    <dubbo:reference id="purchaseBaseRestService" interface="com.young.pact.api.service.rest.purchasebase.PurchaseBaseRestService"
+                version="1.0" group="group-purchasebase" timeout="60000" check="false"/>
+    <!-- 托进物业交接 -->
+    <dubbo:reference id="propertyTransferRestService" interface="com.young.pact.api.service.rest.propertytransfer.PropertyTransferRestService"
+                version="1.0" group="group-property" timeout="60000" check="false"/>
+    <!-- 合同责任人 -->
+    <dubbo:reference id="commonBelongerRestService" interface="com.young.pact.api.service.rest.commonbelonger.CommonBelongerRestService"
+                version="1.0" group="group-commonBelonger" timeout="60000" check="false"/>
+    <!-- 托进合同免租期 -->
+    <dubbo:reference id="purchaseRentfreeRestService" interface="com.young.pact.api.service.rest.purchaserentfree.PurchaseRentfreeRestService"
+                version="1.0" group="group-purchaserentfree" timeout="60000" check="false"/>
+    <!-- 合同收支-->
+    <dubbo:reference id="financeReceiptPayRestService" interface="com.young.pact.api.service.rest.financereceiptpay.FinanceReceiptPayRestService"
+                version="1.0" group="group-financereceiptpay" timeout="60000" check="false"/>
+    <!-- 摊销-->
+    <dubbo:reference id="financeAmortizeRestService" interface="com.young.pact.api.service.rest.financeamortize.FinanceAmortizeRestService"
+                version="1.0" group="group-financeamortize" timeout="60000" check="false"/>
+    <!-- 托出房间信息 -->
+    <dubbo:reference id="rentRoomService" interface="com.young.pact.api.service.rest.rentroom.RentRoomService"
+                version="1.0" group="group-rentroom" timeout="60000" check="false"/>
+    <!-- 托出租客信息 -->
+    <dubbo:reference id="rentCustomerService" interface="com.young.pact.api.service.rest.rentcustomer.RentCustomerService"
+                version="1.0" group="group-rentCustomer" timeout="60000" check="false"/>
+    <!-- 托出合同信息 -->
+    <dubbo:reference id="rentBaseService" interface="com.young.pact.api.service.rest.rentbase.RentBaseService"
+                version="1.0" group="group-rentbase" timeout="60000" check="false"/>
+    <!-- 托出合同物业交接抄表信息 -->
+    <dubbo:reference id="meterGoodsService" interface="com.young.pact.api.service.rest.commonmeterread.MeterGoodsService"
+                version="1.0" group="group-rentmeterGoods" timeout="60000" check="false"/>
+    <!-- 转租协议 -->
+    <dubbo:reference id="rentTurnService" interface="com.young.pact.api.service.rest.rentturn.RentTurnService"
+                version="1.0" group="group-rentTurn" timeout="60000" check="false"/>
+    <!-- 托进申报  -->
+    <dubbo:reference id="declareService" interface="com.young.pact.api.service.rest.declare.DeclareService"
+                version="1.0" group="group-declare" timeout="60000" check="false"/>
+    <!-- 拖进合同解约协议 -->
+    <dubbo:reference id="purchaseTerminationRestService" interface="com.young.pact.api.service.rest.purchasetermination.PurchaseTerminationRestService"
+                version="1.0" group="group-purchasetermination" timeout="60000" check="false"/>           
+    <!-- 续签协议 -->
+    <dubbo:reference id="rentContinuedService" interface="com.young.pact.api.service.rest.rentcontinued.RentContinuedService"
+                version="1.0" group="group-rentcontinued" timeout="60000" check="false"/>
+    <!-- 调房协议 -->
+    <dubbo:reference id="pactRentTransferService" interface="com.young.pact.api.service.rest.pactrenttransfer.PactRentTransferRestService"
+                version="1.0" group="group-transfer" timeout="60000" check="false"/>
+    <!-- 拖出解约协议 -->
+    <dubbo:reference id="pactRentTerminationService" interface="com.young.pact.api.service.rest.pactrenttermination.PactRentTerminationService"
+                version="1.0" group="group-termination" timeout="60000" check="false"/>
+    <!-- 公共物品 -->
+    <dubbo:reference id="commonGoodsService" interface="com.young.pact.api.service.rest.commongoods.CommonGoodsService"
+                version="1.0" group="group-goods" timeout="60000" check="false"/>
+    <!-- 交易记录  -->
+    <dubbo:reference id="commonTradingRecordService" interface="com.young.pact.api.service.rest.commontradingrecord.CommonTradingRecordService"
+                version="1.0" group="group-tradingrecord" timeout="60000" check="false"/>
+    <!-- 资源转移  -->
+    <dubbo:reference id="resourceTransferService" interface="com.young.pact.api.service.rest.common.ResourceTransferService"
+                version="1.0" group="group-resourceTransfer" timeout="60000" check="false"/>
+    <!-- 客源 -->
+    <dubbo:reference id="customerService" interface="com.young.pact.api.service.rest.customer.CustomerService" 
+                    version="1.0" group="group-customer" timeout="60000" check="false"/>
+    <!-- 青春界各部门下银行账号  -->
+    <dubbo:reference id="bankAccountService" interface="com.young.pact.api.service.rest.common.BankAccountService"
+                version="1.0" group="group-bankaccount" timeout="60000" check="false"/>
+     <!-- 登录 -->
+    <dubbo:reference id="loginRpcService" interface="com.young.sso.api.service.rpc.login.LoginRpcService"
+                version="1.0" group="group-login" timeout="60000" check="false"/>
+    <!-- 权限 -->
+    <dubbo:reference id="actionRpcService" interface="com.young.system.api.service.rpc.action.ActionRpcService"
+                version="1.0" group="system-action" timeout="60000" check="false"/>
+    
+</beans>

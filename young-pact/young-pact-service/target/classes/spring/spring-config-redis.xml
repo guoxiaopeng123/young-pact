@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd"
+    default-autowire="byName">
+
+    <bean id="redisClient" class="com.tools.common.redis.factory.RedisClientFactoryBean">
+        <!-- 单个应用中的链接池最大链接数，默认8 -->
+        <property name="maxActive" value="${redis.maxActive}" />
+        <!-- 单个应用中的链接池最大空闲数，默认8 -->
+        <property name="maxIdle" value="${redis.maxIdle}" />
+        <!-- 单个应用中的链接池取链接时最大等待时间，单位：ms 默认-1不等待 -->
+        <property name="maxWait" value="${redis.maxWait}" />
+        <!-- 设置在每一次取对象时测试ping -->
+        <property name="testOnBorrow" value="${redis.testOnBorrow}" />
+        <!-- 设置redis connect request response timeout 单位:ms -->
+        <property name="timeout" value="${redis.timeout}" />
+        <!-- master redis server 设置 -->
+        <!-- host:port:password[可选,password中不要有":"],redis server顺序信息一定不要乱，请按照分配顺序填写，乱了就可能会出现一致性hash不同，造成不命中cache情况 -->
+        <property name="masterConfString" value="${redis.masterConfString}" />
+        <!-- slave redis server 设置 -->
+        <!-- host:port:password[可选,password中不要有":"],slave必须保证与master是对应的一个master的ip只允许配置一个slave的ip，并且顺序必须保证以master的顺序一致 -->
+        <property name="slaveConfString" value="${redis.slaveConfString}" />
+    </bean>
+</beans>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMapConfig  PUBLIC "-//iBATIS.com//DTD SQL Map
+Config 2.0/" "http://ibatis.apache.org/dtd/sql-map-config-2.dtd">
+<sqlMapConfig>
+	<settings cacheModelsEnabled="true" enhancementEnabled="true"
+		lazyLoadingEnabled="false" errorTracingEnabled="true" maxRequests="32"
+		maxSessions="10" maxTransactions="5" useStatementNamespaces="true" />
+	<sqlMap resource="sqlmap/PurchaseBase.xml" />
+	<sqlMap resource="sqlmap/PurchaseHouse.xml" />
+	<sqlMap resource="sqlmap/PurchaseHouseOwner.xml" />
+	<sqlMap resource="sqlmap/CommonCostRule.xml" />
+	<sqlMap resource="sqlmap/PurchaseRentfree.xml" />
+	<sqlMap resource="sqlmap/FinanceReceiptPay.xml" />
+	<sqlMap resource="sqlmap/FinanceReceiptPayVoucher.xml" />
+	<sqlMap resource="sqlmap/CommonPic.xml" />
+	<sqlMap resource="sqlmap/CommonGoods.xml" />
+	<sqlMap resource="sqlmap/CommonGoodsPic.xml" />
+	<sqlMap resource="sqlmap/CommonMeterRead.xml" />
+	<sqlMap resource="sqlmap/CommonMeterReadPic.xml" />
+	<sqlMap resource="sqlmap/CommonBelonger.xml" />
+	<sqlMap resource="sqlmap/FinanceAmortize.xml" />
+	<!--   托出租客 -->
+    <sqlMap resource="sqlmap/RentCustomer.xml" />
+    <!--   托出租客共同居住人 -->
+    <sqlMap resource="sqlmap/Rentcommonowner.xml" />
+    <!--   托出房间 -->
+    <sqlMap resource="sqlmap/RentRoom.xml" />
+    <!--   托出合同 -->
+    <sqlMap resource="sqlmap/RentBase.xml" />
+    <!--   转租协议 -->
+    <sqlMap resource="sqlmap/RentTurn.xml" />
+    <!--   调房协议 -->
+    <sqlMap resource="sqlmap/PactRentTransfer.xml" />
+    <!--   转租协议费用-->
+    <sqlMap resource="sqlmap/RentTurnCost.xml" />
+    <!--   解约协议-->
+    <sqlMap resource="sqlmap/PactRentTermination.xml" />
+    <sqlMap resource="sqlmap/PurchaseTermination.xml" />
+    <!--   续签协议-->
+    <sqlMap resource="sqlmap/RentContinued.xml" />
+    <!--   申报-->
+    <sqlMap resource="sqlmap/Declare.xml" />
+    <!--   申报价格-->
+    <sqlMap resource="sqlmap/DeclarePrice.xml" />
+    <!--   交易记录 -->
+    <sqlMap resource="sqlmap/CommonTradingRecord.xml" />
+    
+</sqlMapConfig>

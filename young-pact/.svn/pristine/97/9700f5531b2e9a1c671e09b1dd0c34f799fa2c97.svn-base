@@ -1,0 +1,451 @@
+package com.young.pact.service.commonmeterread.impl;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+import org.springframework.stereotype.Service;
+
+import com.tools.common.util.convert.BeanUtils;
+import com.tools.common.util.string.StringUtil;
+import com.young.common.dict.CommonEnum;
+import com.young.common.domain.ApiResult;
+import com.young.pact.api.domain.param.rest.commongoods.CommonGoodsParam;
+import com.young.pact.api.domain.param.rest.commonmeterread.CommonMeterReadParam;
+import com.young.pact.api.domain.param.rest.commonmeterread.MeterGoodsParam;
+import com.young.pact.api.domain.result.rest.commongoods.CommonGoodsPicResult;
+import com.young.pact.api.domain.result.rest.commongoods.CommonGoodsResult;
+import com.young.pact.api.domain.result.rest.commonmeterread.CommonMeterReadPicResult;
+import com.young.pact.api.domain.result.rest.commonmeterread.CommonMeterReadResult;
+import com.young.pact.api.domain.result.rest.commonmeterread.MeterGoodsResult;
+import com.young.pact.api.service.rest.commonmeterread.MeterGoodsService;
+import com.young.pact.common.constant.NormalConstant;
+import com.young.pact.common.constant.StringConsts;
+import com.young.pact.common.dict.PactCommonEnum;
+import com.young.pact.common.exception.PactManagerExcepion;
+import com.young.pact.domain.commongoods.CommonGoodsDO;
+import com.young.pact.domain.commongoods.CommonGoodsPicDO;
+import com.young.pact.domain.commonmeterread.CommonMeterReadDO;
+import com.young.pact.domain.commonmeterread.CommonMeterReadPicDO;
+import com.young.pact.domain.commonmeterread.CommonMeterReadQuery;
+import com.young.pact.domain.commonmeterread.CommonMeterReadVO;
+import com.young.pact.domain.commonmeterread.MeterReadGoodsDO;
+import com.young.pact.domain.commonmeterread.MeterReadGoodsVO;
+import com.young.pact.manager.commonmeterread.CommonMeterReadManager;
+import com.young.pact.rpc.operatelog.OperateLogRpc;
+
+/**
+ * @描述 : 抄表信息
+ * @author : GuoXiaoPeng
+ * @创建时间 : 2018年8月2日 下午5:31:35
+ */
+@Service("meterGoodsService")
+public class MeterGoodsServiceImpl implements MeterGoodsService{
+
+    private static final Log LOG = LogFactory.getLog(MeterGoodsServiceImpl.class);
+    private CommonMeterReadManager commonMeterReadManager;
+    private OperateLogRpc operateLogRpc;
+    /**
+    * @Fields serialVersionUID : TODO( )
+    */
+    private static final long serialVersionUID = 1L;
+
+    @Override
+    public ApiResult<String> saveMeterGoodsRedis(MeterGoodsParam param) {
+        ApiResult<String> result = new ApiResult<>();
+        StringBuilder key = new StringBuilder();
+        String pin = ""; 
+        try {
+            result = validNull(param);
+            if(StringUtil.isNotEmpty(result.getCode())){
+                return result;
+            }
+            pin = param.getCreateName() == null?"":param.getCreateName();
+            key.append(param.getServiceCode()).append(StringConsts.UNDERLINE)
+            .append(StringConsts.REDIS_PROPERTYTRANSFER_KEY).append(StringConsts.UNDERLINE).append(pin);
+            MeterReadGoodsDO meterReadGoodsDO = new MeterReadGoodsDO();
+            BeanUtils.copyProperties(param, meterReadGoodsDO);
+            List<CommonMeterReadDO> commonMeterReadDOs = new ArrayList<>();
+            List<CommonGoodsDO> commonGoodsDOs = new ArrayList<>();
+            BeanUtils.copyListProperties(param.getMeterReadList(), commonMeterReadDOs, CommonMeterReadDO.class);
+            BeanUtils.copyListProperties(param.getGoodsList(), commonGoodsDOs, CommonGoodsDO.class);
+            for(CommonMeterReadDO commonMeterReadDO: commonMeterReadDOs){
+                List<CommonMeterReadPicDO> commonMeterReadPicDOs = new ArrayList<>();
+                BeanUtils.copyListProperties(commonMeterReadDO.getCommonMeterReadPicList(), commonMeterReadPicDOs, CommonMeterReadPicDO.class);
+                commonMeterReadDO.setCommonMeterReadPicList(commonMeterReadPicDOs);
+            }
+            for(CommonGoodsDO commonGoodsDO:commonGoodsDOs){
+                List<CommonGoodsPicDO> commonGoodsPicList = new ArrayList<>();
+                BeanUtils.copyListProperties(commonGoodsDO.getCommonGoodsPicList(), commonGoodsPicList, CommonGoodsPicDO.class);
+                commonGoodsDO.setCommonGoodsPicList(commonGoodsPicList);
+            }
+            meterReadGoodsDO.setMeterReadList(commonMeterReadDOs);
+            meterReadGoodsDO.setGoodsList(commonGoodsDOs);
+            commonMeterReadManager.saveMeterGoodsRedis(key.toString(), meterReadGoodsDO);
+           
+            result.setData(key.toString());
+            result.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+            result.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+        } catch (PactManagerExcepion e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        } catch (Exception e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return result;
+    }
+    /**
+    * @Title: validNull
+    * @Description: TODO( 校验必填字段 )
+    * @author GuoXiaoPeng
+    * @param param 抄表+物品信息
+    * @return 返回结果
+    * @throws 异常
+     */
+    @SuppressWarnings("unused")
+    private ApiResult<String> validNull(MeterGoodsParam param) {
+        ApiResult<String> result = new ApiResult<>();
+        List<CommonMeterReadParam> meterReadList = param.getMeterReadList();
+        List<CommonGoodsParam> goodsList = param.getGoodsList();
+        if(null == param){
+            result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+            result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+            return result;
+        }
+        if(null == param.getType()){
+            result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+            result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+            return result;
+        }
+        if(null!=meterReadList&&meterReadList.size()>0){
+            for(CommonMeterReadParam commonMeterReadParam: meterReadList){
+                if(StringUtil.isBlank(commonMeterReadParam.getTableNumber())){
+                    result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                    result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                    return result;
+                }
+                if(StringUtil.isBlank(commonMeterReadParam.getTableItem())){
+                    result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                    result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                    return result;
+                }
+                if(null == commonMeterReadParam.getType()){
+                    result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                    result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                    return result;
+                }
+                if(null == commonMeterReadParam.getNumber()){
+                    result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                    result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                    return result;
+                }
+                if(null == commonMeterReadParam.getDate()){
+                    result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                    result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                    return result;
+                }
+                if(null == commonMeterReadParam.getCommonMeterReadPicList() ||  commonMeterReadParam.getCommonMeterReadPicList().size()<=0){
+                    result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                    result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                    return result;
+                }
+            }
+        }
+        if(null!=goodsList&&goodsList.size()>0){
+            for(CommonGoodsParam good:goodsList){
+                if(StringUtil.isBlank(good.getGoodsName())){
+                    result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                    result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                    return result;
+                }
+                if(StringUtil.isBlank(good.getUnit())){
+                    result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                    result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                    return result;
+                }
+                if(null==good.getNumber()){
+                    result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                    result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                    return result;
+                }
+                if(StringUtil.isBlank(good.getGoodsStatus())){
+                    result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                    result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                    return result;
+                }
+                if(null==good.getCommonGoodsPicList()||good.getCommonGoodsPicList().size()<=0){
+                    result.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                    result.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+                    return result;
+                }
+                
+            }
+        }
+        return result;
+    }
+
+    @Override
+    public ApiResult<MeterGoodsResult> getMeterGoodsRedis(String key) {
+        ApiResult<MeterGoodsResult> result = new ApiResult<>();
+        try {
+            MeterReadGoodsVO meterReadGoodsVO = commonMeterReadManager.getMeterGoodsRedis(key);
+            if(null!=meterReadGoodsVO){
+                MeterGoodsResult meterGoodsResult = new MeterGoodsResult();
+                BeanUtils.copyProperties(meterReadGoodsVO, meterGoodsResult);
+                List<CommonMeterReadResult> commonMeterReadResults = new ArrayList<>();
+                List<CommonGoodsResult> commonGoodsResults = new ArrayList<>();
+                BeanUtils.copyListProperties(meterReadGoodsVO.getMeterReadList(), commonMeterReadResults, CommonMeterReadResult.class);
+                BeanUtils.copyListProperties(meterReadGoodsVO.getGoodsList(), commonGoodsResults, CommonGoodsResult.class);
+                for(CommonMeterReadResult commonMeterReadResult: commonMeterReadResults){
+                    List<CommonMeterReadPicResult> commonMeterReadPicResults = new ArrayList<>();
+                    BeanUtils.copyListProperties(commonMeterReadResult.getCommonMeterReadPicList(), commonMeterReadPicResults, CommonMeterReadPicResult.class);
+                    commonMeterReadResult.setCommonMeterReadPicList(commonMeterReadPicResults);
+                }
+                for(CommonGoodsResult commonGoodsResult:commonGoodsResults){
+                    List<CommonGoodsPicResult> commonGoodsPicResults = new ArrayList<>();
+                    BeanUtils.copyListProperties(commonGoodsResult.getCommonGoodsPicList(), commonGoodsPicResults, CommonGoodsPicResult.class);
+                    commonGoodsResult.setCommonGoodsPicList(commonGoodsPicResults);
+                }
+                meterGoodsResult.setMeterReadList(commonMeterReadResults);
+                meterGoodsResult.setGoodsList(commonGoodsResults);
+                result.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+                result.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+                result.setData(meterGoodsResult);
+            }
+        } catch (PactManagerExcepion e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        } catch (Exception e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            result.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            result.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return result;
+    }
+
+    @Override
+    public ApiResult<Boolean> insertMeterRead(CommonMeterReadParam param) {
+        ApiResult<Boolean> apiResult = new ApiResult<Boolean>();
+        try {
+            if (param!=null) {
+                CommonMeterReadDO commonMeterReadDO = new CommonMeterReadDO();
+                List<CommonMeterReadPicDO> commonMeterReadPicDOs = new ArrayList<>();
+                if(null!=param.getCommonMeterReadPicList()){
+                    BeanUtils.copyListProperties(param.getCommonMeterReadPicList(), commonMeterReadPicDOs, CommonMeterReadPicDO.class);
+                }
+                BeanUtils.copyProperties(param, commonMeterReadDO);
+                commonMeterReadDO.setCommonMeterReadPicList(commonMeterReadPicDOs);
+                commonMeterReadDO.setCreateName(param.getCreateName());
+                commonMeterReadDO.setIp(param.getIp());
+                boolean flag = commonMeterReadManager.insertMeterRead(commonMeterReadDO);
+                if (flag) {
+                    Map<String, Object> map = new HashMap<String, Object>();
+                    map.put(NormalConstant.SERVICETYPE, StringConsts.OPERATELOG_METER_SERVICETYPE);
+                    map.put(NormalConstant.SERVICECODE, commonMeterReadDO.getPactCode());
+                    map.put(NormalConstant.OPERATETYPE, StringConsts.ADD);
+                    map.put(NormalConstant.OPERATEPIN, param.getCreateName());
+                    map.put(NormalConstant.OPERATECONTENT, StringConsts.ADD_METERREAD_DATA);
+                    operateLogRpc.saveOperateLog(map);
+                    apiResult.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+                    apiResult.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+                    apiResult.setData(true);
+                }else{
+                    apiResult.setCode(CommonEnum.REQUEST_FAIL.getCode());
+                    apiResult.setMessage(CommonEnum.REQUEST_FAIL.getMessage());
+                }
+            }else{
+                apiResult.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                apiResult.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+            }
+        } catch (PactManagerExcepion e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            apiResult.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            apiResult.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        } catch (Exception e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            apiResult.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            apiResult.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return apiResult;
+    }
+
+    @Override
+    public ApiResult<CommonMeterReadResult> getMeterRead(Long id) {
+        ApiResult<CommonMeterReadResult> apiResult = new ApiResult<CommonMeterReadResult>();
+        try {
+            CommonMeterReadVO commonMeterReadVO = commonMeterReadManager.getMeterRead(id);
+            if (commonMeterReadVO!=null) {
+                CommonMeterReadResult commonMeterReadResult = new CommonMeterReadResult();
+                List<CommonMeterReadPicResult> commonMeterReadPicResults = new ArrayList<>();
+                BeanUtils.copyListProperties(commonMeterReadVO.getCommonMeterReadPicList(), commonMeterReadPicResults, CommonMeterReadPicResult.class);
+                BeanUtils.copyProperties(commonMeterReadVO, commonMeterReadResult);
+                commonMeterReadResult.setCommonMeterReadPicList(commonMeterReadPicResults);
+                apiResult.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+                apiResult.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+                apiResult.setData(commonMeterReadResult);
+            }else{
+                apiResult.setCode(PactCommonEnum.NO_GOODS_INFO.getCode());
+                apiResult.setMessage(PactCommonEnum.NO_GOODS_INFO.getMessage());
+            }
+        } catch (PactManagerExcepion e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            apiResult.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            apiResult.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        } catch (Exception e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            apiResult.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            apiResult.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return apiResult;
+    }
+
+    @Override
+    public ApiResult <List<CommonMeterReadResult>> listMeterRead(CommonMeterReadParam param) {
+        ApiResult<List<CommonMeterReadResult>> apiResult = new ApiResult<>();
+        try {
+            if (param!=null) {
+                CommonMeterReadQuery query = new CommonMeterReadQuery();
+                BeanUtils.copyProperties(param, query);
+                List<CommonMeterReadVO> list = commonMeterReadManager.listMeterReadByParam(query);
+                List<CommonMeterReadResult> commonMeterReadResults = new ArrayList<>();
+                if (null!=list&&list.size()>0) {
+                    for(CommonMeterReadVO commonMeterReadVO:list){
+                        CommonMeterReadResult commonMeterReadResult = new CommonMeterReadResult();
+                        BeanUtils.copyProperties(commonMeterReadVO, commonMeterReadResult);
+                        List<CommonMeterReadPicResult> commonMeterReadPicResults = new ArrayList<>();
+                        BeanUtils.copyListProperties(commonMeterReadVO.getCommonMeterReadPicList(), commonMeterReadPicResults, CommonMeterReadPicResult.class);
+                        commonMeterReadResult.setCommonMeterReadPicList(commonMeterReadPicResults);
+                        commonMeterReadResults.add(commonMeterReadResult);
+                    }
+                    apiResult.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+                    apiResult.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+                    apiResult.setData(commonMeterReadResults);
+                }else{
+                    apiResult.setCode(CommonEnum.NO_CONTENT.getCode());
+                    apiResult.setMessage(CommonEnum.NO_CONTENT.getMessage());
+                }
+            }else{
+                apiResult.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                apiResult.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+            }
+        } catch (PactManagerExcepion e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            apiResult.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            apiResult.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        } catch (Exception e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            apiResult.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            apiResult.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return apiResult;
+    }
+
+    @Override
+    public ApiResult<Boolean> updateMeterRead(CommonMeterReadParam param) {
+        ApiResult<Boolean> apiResult = new ApiResult<>();
+        try {
+            if (param!=null) {
+                CommonMeterReadDO commonMeterReadDO = new CommonMeterReadDO();
+                List<CommonMeterReadPicDO> commonMeterReadPicDOs = new ArrayList<>();
+                BeanUtils.copyListProperties(param.getCommonMeterReadPicList(), commonMeterReadPicDOs, CommonMeterReadPicDO.class);
+                BeanUtils.copyProperties(param, commonMeterReadDO);
+                commonMeterReadDO.setCommonMeterReadPicList(commonMeterReadPicDOs);
+                for(CommonMeterReadPicDO commonMeterReadPicDO:commonMeterReadPicDOs){
+                    commonMeterReadPicDO.setCreateName(commonMeterReadDO.getModifiedName());
+                    commonMeterReadPicDO.setIp(commonMeterReadDO.getIp());
+                    commonMeterReadPicDO.setMeterReadId(commonMeterReadDO.getId());
+                }
+                boolean flag = commonMeterReadManager.updateMeterRead(commonMeterReadDO);
+                if (flag) {
+                    Map<String, Object> map = new HashMap<String, Object>();
+                    map.put(NormalConstant.SERVICETYPE, StringConsts.OPERATELOG_METER_SERVICETYPE);
+                    map.put(NormalConstant.SERVICECODE, commonMeterReadDO.getId());
+                    map.put(NormalConstant.OPERATETYPE, StringConsts.UPDATE);
+                    map.put(NormalConstant.OPERATEPIN, param.getModifiedName());
+                    map.put(NormalConstant.OPERATECONTENT, StringConsts.UPDATE_METERREAD_DATA);
+                    operateLogRpc.saveOperateLog(map);
+                    apiResult.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+                    apiResult.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+                    apiResult.setData(true);
+                }else{
+                    apiResult.setCode(CommonEnum.REQUEST_FAIL.getCode());
+                    apiResult.setMessage(CommonEnum.REQUEST_FAIL.getMessage());
+                }
+            }else{
+                apiResult.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                apiResult.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+            }
+        }  catch (PactManagerExcepion e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            apiResult.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            apiResult.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        } catch (Exception e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            apiResult.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            apiResult.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return apiResult;
+    }
+
+    @Override
+    public ApiResult<Boolean> removeMeterRead( CommonMeterReadParam param) {
+        ApiResult<Boolean> apiResult = new ApiResult<>();
+        try {
+            if(null==param||null==param.getId()||StringUtil.isBlank(param.getPactCode())){
+                apiResult.setCode(PactCommonEnum.PARAM_IS_NULL.getCode());
+                apiResult.setMessage(PactCommonEnum.PARAM_IS_NULL.getMessage());
+            }
+            CommonMeterReadDO commonMeterReadDO = new CommonMeterReadDO();
+            BeanUtils.copyProperties(param, commonMeterReadDO);
+            boolean flag = commonMeterReadManager.removeMeterRead(commonMeterReadDO);
+            if (flag) {
+                Map<String, Object> map = new HashMap<String, Object>();
+                map.put(NormalConstant.SERVICETYPE, StringConsts.OPERATELOG_METER_SERVICETYPE);
+                map.put(NormalConstant.SERVICECODE, commonMeterReadDO.getId());
+                map.put(NormalConstant.OPERATETYPE, StringConsts.DELETE);
+                map.put(NormalConstant.OPERATEPIN, param.getCreateName());
+                map.put(NormalConstant.OPERATECONTENT, StringConsts.DELETE_METERREAD_DATA);
+                operateLogRpc.saveOperateLog(map);
+                apiResult.setCode(CommonEnum.REQUEST_SUCCESS.getCode());
+                apiResult.setMessage(CommonEnum.REQUEST_SUCCESS.getMessage());
+                apiResult.setData(true);
+            }else{
+                apiResult.setCode(CommonEnum.REQUEST_FAIL.getCode());
+                apiResult.setMessage(CommonEnum.REQUEST_FAIL.getMessage());
+            }
+        } catch (PactManagerExcepion e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            apiResult.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            apiResult.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        } catch (Exception e) {
+            LOG.error(CommonEnum.SYSTEM_EXCEPTION.getMessage(), e);
+            apiResult.setCode(CommonEnum.SYSTEM_EXCEPTION.getCode());
+            apiResult.setMessage(CommonEnum.SYSTEM_EXCEPTION.getMessage());
+        }
+        return apiResult;
+    }
+    
+    public CommonMeterReadManager getCommonMeterReadManager() {
+        return commonMeterReadManager;
+    }
+
+    public void setCommonMeterReadManager(CommonMeterReadManager commonMeterReadManager) {
+        this.commonMeterReadManager = commonMeterReadManager;
+    }
+    public OperateLogRpc getOperateLogRpc() {
+        return operateLogRpc;
+    }
+    public void setOperateLogRpc(OperateLogRpc operateLogRpc) {
+        this.operateLogRpc = operateLogRpc;
+    }
+    public static long getSerialversionuid() {
+        return serialVersionUID;
+    }
+}

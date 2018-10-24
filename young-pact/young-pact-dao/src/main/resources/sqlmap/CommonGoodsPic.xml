@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="CommonGoodsPic">
+	<typeAlias alias="commonGoodsPicDO" type="com.young.pact.domain.commongoods.CommonGoodsPicDO" />
+	<typeAlias alias="commonGoodsPicVO" type="com.young.pact.domain.commongoods.CommonGoodsPicVO" />
+	<sql id="allFields">
+	    id,goods_id,url,sort,ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		pact_common_goods_pic
+	</sql>
+	
+	<!-- 保存物品照片 -->
+	<insert id="saveCommonGoodsPic" parameterClass="commonGoodsPicDO">
+	    INSERT INTO
+        <include refid="CommonGoodsPic.tableName" />
+        (goods_id,url,sort,ip,gmt_create,gmt_create_name)
+        values(#goodsId#,#url#,#sort#,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 修改物品照片信息 -->
+	<update id="updatePic" parameterClass="commonGoodsPicDO">
+		update
+			<include refid="CommonGoodsPic.tableName" />
+		set
+			gmt_modified = now(),gmt_modified_name=#modifiedName#
+		<isNotNull prepend="," property="ip">
+            ip = #ip#
+            
+        </isNotNull>
+        <isNotNull prepend="," property="url">
+            url = #url#
+        </isNotNull>
+        <isNotNull prepend="," property="sort">
+            sort = #sort#
+        </isNotNull>
+        where
+        	goods_id=#goodsId#
+	</update>
+    <!-- 	根据物品id集合查询物品图片集合  -->
+	<select id="listGoodsPicByGdIds" parameterClass="java.util.List" resultClass="commonGoodsPicVO">
+	      select 
+	      id,
+	      goods_id goodsId,
+	      url,
+	      sort
+	      from 
+	      <include refid="CommonGoodsPic.tableName" />
+	      where 
+	      goods_id in
+          <iterate  open="(" close=")" conjunction=",">
+               #[]#
+          </iterate>
+	</select>
+	<delete id="removeGoodsByGoodId" parameterClass="java.lang.Long" >
+        DELETE
+        FROM
+           <include refid="CommonGoodsPic.tableName" />
+        WHERE
+            goods_id=#goodsId#
+    </delete>
+</sqlMap>

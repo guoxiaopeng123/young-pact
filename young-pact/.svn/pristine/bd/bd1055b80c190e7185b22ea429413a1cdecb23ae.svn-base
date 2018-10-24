@@ -1,0 +1,1 @@
+dubbo.consumer.registry.address=zookeeper://192.168.30.158:2181

@@ -1,0 +1,370 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="RentTurn">
+    <!-- 实体类别名 -->
+    <typeAlias alias="rentTurnDO" type="com.young.pact.domain.rentturn.RentTurnDO" />
+    <typeAlias alias="rentTurnQuery" type="com.young.pact.domain.rentturn.RentTurnQuery" />
+    <typeAlias alias="rentTurnVO" type="com.young.pact.domain.rentturn.RentTurnVO" />
+    <!-- 所有字段 -->
+    <sql id="allFields">
+       id,relet_code as reletCode,nature,address,pirmary_pact_code as pirmaryPactCode,
+       new_pact_code as newPactCode,settled_amount as settledAmount,settled_way as settledWay,
+       payee_name as payeeName,account_num as accountNum,case_bank as caseBank,open_bank as openBank,
+       tel,relet_reason as reletReason,remark,relet_time as reletTime,signing_time as signingTime,
+       state,is_delete as isDelete,
+       ip,gmt_create as `create`,gmt_modified as modified,gmt_create_name as createName,gmt_modified_name as modifiedName   
+    </sql>
+    <!-- 表名 -->
+    <sql id="tableName">
+        pact_rent_turn
+    </sql>
+    <!-- 插入转租协议信息 -->
+    <insert id="saveRentTurn" parameterClass="rentTurnDO">
+        INSERT INTO
+        <include refid="RentTurn.tableName" />
+        (relet_code,nature,address,pirmary_pact_code,new_pact_code,settled_amount,settled_way,
+        payee_name,account_num,case_bank,open_bank,tel,relet_reason,remark,relet_time,signing_time,
+        state,is_delete,
+        ip,gmt_create,gmt_modified,gmt_create_name,gmt_modified_name)
+        VALUES
+        (#reletCode#,#nature#,#address#,#pirmaryPactCode#,#newPactCode#,#settledAmount#,#settledWay#,
+         #payeeName#,#accountNum#,#caseBank#,#openBank#,#tel#,#reletReason#,#remark#,#reletTime#,
+         #signingTime#,#state#,#isDelete#,
+         #ip#,NOW(),#modified#,#createName#,#modifiedName#)
+        <selectKey resultClass="long" keyProperty="id">
+            SELECT @@IDENTITY AS id
+        </selectKey>
+    </insert>
+    <!-- 查询转租协议总数 -->
+    <select id="count" parameterClass="rentTurnQuery" resultClass="java.lang.Integer">
+        SELECT
+            count(turn.id)
+        FROM
+            pact_rent_turn turn
+        LEFT JOIN pact_common_belonger belonger ON turn.relet_code = belonger.pact_code
+        LEFT JOIN pact_rent_room room on  room.rent_pact_code = turn.pirmary_pact_code
+        WHERE
+            turn.is_delete = 0  and  belonger.user_role = '维护人'
+       <isNotEmpty property="startDeadline" prepend="and">
+             <![CDATA[turn.relet_time >= ]]>#startDeadline#
+        </isNotEmpty>
+        <isNotEmpty property="endDeadline" prepend="and">
+             <![CDATA[turn.relet_time < ]]>#endDeadline#
+        </isNotEmpty>
+        <isNotEmpty property="dealStartTime" prepend="and">
+             <![CDATA[turn.signing_time >= ]]>#dealStartTime#
+        </isNotEmpty>
+        <isNotEmpty property="dealEndTime" prepend="and">
+             <![CDATA[turn.signing_time < ]]>#dealEndTime#
+        </isNotEmpty>
+        <isNotEmpty property="deptCode" prepend="and">
+            belonger.dept_code  like concat('%',#deptCode#,'%')
+        </isNotEmpty>
+        <isNotEmpty property="nature" prepend="and">
+            turn.nature=#nature#
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend="and">
+            turn.state=#state#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="and">
+             (
+                turn.relet_code like
+                concat('%',#keyword#,'%') or
+                turn.address like concat('%',#keyword#,'%') or
+                turn.pirmary_pact_code like concat('%',#keyword#,'%') or 
+                turn.new_pact_code like concat('%',#keyword#,'%') 
+              )
+        </isNotEmpty>
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+    </select>
+    <!-- 查询转租协议列表 -->
+    <select id="listParam" parameterClass="rentTurnQuery" resultClass="rentTurnVO">
+        SELECT
+		    turn.relet_code AS reletCode,
+		    turn.nature,
+		    turn.address,
+		    turn.pirmary_pact_code AS pirmaryPactCode,
+		    turn.new_pact_code AS newPactCode,
+		    turn.relet_time as  reletTime,
+		    turn.signing_time as signingTime,
+		    turn.gmt_create as `create`,
+		    turn.state,
+		    belonger.dept_name AS duardianDeptName,
+		    belonger.user_name AS duardianUserName,
+		    room.rent_way as rentWay
+		FROM
+		    pact_rent_turn turn
+		LEFT JOIN pact_common_belonger belonger ON turn.relet_code = belonger.pact_code
+		LEFT JOIN pact_rent_room room on  room.rent_pact_code = turn.pirmary_pact_code
+		WHERE
+		    turn.is_delete = 0 and  belonger.user_role = '维护人'
+		<isNotEmpty property="startDeadline" prepend="and">
+             <![CDATA[turn.relet_time >= ]]>#startDeadline#
+        </isNotEmpty>
+        <isNotEmpty property="endDeadline" prepend="and">
+             <![CDATA[turn.relet_time < ]]>#endDeadline#
+        </isNotEmpty>
+        <isNotEmpty property="dealStartTime" prepend="and">
+             <![CDATA[turn.signing_time >= ]]>#dealStartTime#
+        </isNotEmpty>
+        <isNotEmpty property="dealEndTime" prepend="and">
+             <![CDATA[turn.signing_time < ]]>#dealEndTime#
+        </isNotEmpty>
+        <isNotEmpty property="deptCode" prepend="and">
+            belonger.dept_code  like concat('%',#deptCode#,'%')
+        </isNotEmpty>
+        <isNotEmpty property="nature" prepend="and">
+            turn.nature=#nature#
+        </isNotEmpty>
+        <isNotEmpty property="state" prepend="and">
+            turn.state=#state#
+        </isNotEmpty>
+        <isNotEmpty property="keyword" prepend="and">
+             (
+                turn.relet_code like
+                concat('%',#keyword#,'%') or
+                turn.address like concat('%',#keyword#,'%') or
+                turn.pirmary_pact_code like concat('%',#keyword#,'%') or 
+                turn.new_pact_code like concat('%',#keyword#,'%') 
+              )
+        </isNotEmpty>
+        <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+        ORDER BY  turn.relet_time DESC ,turn.signing_time DESC,turn.gmt_create DESC LIMIT #startRow#,#pageSize#
+    </select>
+    <!--     查询登录人有没有权限查看详情 -->
+    <select id="getPermissions" parameterClass="rentTurnQuery" resultClass="rentTurnVO">
+     SELECT
+            turn.relet_code AS reletCode
+        FROM
+            pact_rent_turn turn
+        LEFT JOIN pact_common_belonger belonger ON turn.relet_code = belonger.pact_code
+        WHERE
+            turn.is_delete = 0 and  belonger.user_role = '签约管家'
+            and turn.relet_code = #reletCode#
+         <!-- 数据权限 -->
+        <isNotEmpty property="scope" >
+             <!--  本人 -->
+             <isEqual property="scope" compareValue="1" prepend="and">
+                       belonger.user_pin=#userPin#
+             </isEqual>
+             <!--  本部门 -->
+             <isEqual property="scope" compareValue="2" prepend="and">
+                     belonger.dept_code=#deptCode#
+             </isEqual>
+             <!--  本人及下属 -->
+             <isEqual property="scope" compareValue="3" prepend="and">
+                    belonger.user_pin in
+                    <iterate property="pinList" open="(" close=")" conjunction=",">
+                         #pinList[]#
+                    </iterate>
+             </isEqual>
+              <!--  本部门及下属部门 -->
+             <isEqual property="scope" compareValue="4" prepend="and">
+                    belonger.dept_code in
+                    <iterate property="deptList" open="(" close=")" conjunction=",">
+                      #deptList[]#
+                    </iterate>
+             </isEqual>
+        </isNotEmpty>
+        LIMIT 1   
+    </select>
+    <!-- 根据协议编码查询转租协议详情 -->
+    <select id="getRentTurnByReletCode" parameterClass="java.lang.String" resultClass="rentTurnVO">
+        select   
+        turn.id,turn.relet_code as reletCode,turn.nature,turn.address,turn.pirmary_pact_code as pirmaryPactCode,
+        turn.new_pact_code as newPactCode,turn.settled_amount as settledAmount,turn.settled_way as settledWay,
+        turn.payee_name as payeeName,turn.account_num as accountNum,turn.case_bank as caseBank,turn.open_bank as openBank,
+        turn. tel,turn.relet_reason as reletReason,turn.remark,turn.relet_time as reletTime,turn.signing_time as signingTime,
+        turn.state,turn.is_delete as isDelete,
+        turn.ip,turn.gmt_create as `create`,turn.gmt_modified as modified,turn.gmt_create_name as createName,turn.gmt_modified_name as modifiedName,   
+        belonger.user_name AS dealName,
+        belonger.dept_name AS dealDeptName,
+        belonger.user_pin AS dealUserPin
+        from 
+        <include refid="RentTurn.tableName" /> turn
+        LEFT JOIN pact_common_belonger belonger ON turn.relet_code = belonger.pact_code
+        where relet_code = #reletCode# and belonger.user_role = '签约管家'
+         LIMIT 1   
+    </select>
+    <!-- 修改转租协议审核状态-->
+    <update id="updateRentTurnStateByCode" parameterClass="rentTurnDO">
+         UPDATE
+        <include refid="RentTurn.tableName" />
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#
+        <isNotNull property="state" prepend=",">
+            state=#state#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE relet_code=#reletCode#
+    </update>
+    <!--     修改转租协议 -->
+    <update id="updateRentTurn" parameterClass="rentTurnDO">
+         UPDATE
+        <include refid="RentTurn.tableName" />
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#
+        <isNotNull property="reletTime" prepend=",">
+            relet_time=#reletTime#
+        </isNotNull>
+         <isNotNull property="signingTime" prepend=",">
+            signing_time=#signingTime#
+        </isNotNull>
+         <isNotNull property="reletReason" prepend=",">
+            relet_reason=#reletReason#
+        </isNotNull>
+        <isNotNull property="remark" prepend=",">
+            remark=#remark#
+        </isNotNull>
+        <isNotNull property="payeeName" prepend=",">
+            payee_name=#payeeName#
+        </isNotNull> 
+        <isNotNull property="accountNum" prepend=",">
+            account_num=#accountNum#
+        </isNotNull> 
+        <isNotNull property="caseBank" prepend=",">
+            case_bank=#caseBank#
+        </isNotNull>
+        <isNotNull property="openBank" prepend=",">
+            open_bank=#openBank#
+        </isNotNull> 
+        <isNotNull property="tel" prepend=",">
+            tel=#tel#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE relet_code=#reletCode#
+    </update>
+    <!--     删除转租协议 -->
+    <update id="removeRentTurnByReletCode" parameterClass="rentTurnDO">
+        UPDATE
+        <include refid="RentTurn.tableName" />
+        SET gmt_modified = now(),gmt_modified_name = #modifiedName#,is_delete=1
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        WHERE relet_code=#reletCode#
+    </update>
+    <!--    条件查询托出合同转租协议集合 -->
+    <select id="listRentTurnByParam" parameterClass="rentTurnQuery" resultClass="rentTurnVO">
+        SELECT 
+           turn.relet_code reletCode,
+           guardianBelonger.userPin guardianPin
+        from 
+         <include refid="RentTurn.tableName" /> turn
+         LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        )guardianBelonger ON turn.relet_code = guardianBelonger.pactCode 
+        where turn.is_delete = 0 
+        <isNotEmpty property="state" prepend="and">
+            turn.state = #state# 
+        </isNotEmpty>
+    </select>
+    <!--    查询托出合同转租协议提交审核后超过24小时没有审核通过或驳回的托出合同转租协议-->
+    <select id="listUnsubmitted" parameterClass="rentTurnQuery" resultClass="rentTurnVO">
+        SELECT 
+           turn.relet_code reletCode,
+           guardianBelonger.userPin guardianPin
+        from 
+         <include refid="RentTurn.tableName" /> turn
+         LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        )guardianBelonger ON turn.relet_code = guardianBelonger.pactCode 
+        where turn.is_delete = 0 and turn.state = #state# 
+        AND TIMESTAMPDIFF(HOUR, turn.gmt_create, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, turn.gmt_create, NOW())  <![CDATA[ < ]]> 48 
+    </select>
+    <!--    查询录入托出合同转租协议超过24小时未提交审核的托出合同转租协议 -->
+    <select id="listUnReview" parameterClass="rentTurnQuery" resultClass="rentTurnVO">
+        SELECT 
+           turn.relet_code reletCode,
+           guardianBelonger.userPin guardianPin
+        from 
+         <include refid="RentTurn.tableName" /> turn
+         LEFT JOIN (
+            SELECT
+                belonger.pact_code pactCode,
+                belonger.user_pin userPin,
+                belonger.user_name userName,
+                belonger.dept_code deptCode,
+                belonger.dept_name deptName
+            FROM
+                pact_common_belonger belonger
+            WHERE
+                belonger.user_role = '维护人'
+        )guardianBelonger ON turn.relet_code = guardianBelonger.pactCode 
+        where turn.is_delete = 0 and turn.state = #state# 
+        AND TIMESTAMPDIFF(HOUR, turn.gmt_modified, NOW())  <![CDATA[ >= ]]> 24
+        AND TIMESTAMPDIFF(HOUR, turn.gmt_modified, NOW())  <![CDATA[ < ]]> 48 
+    </select>
+    
+</sqlMap>

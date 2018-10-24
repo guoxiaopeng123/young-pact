@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	
+	xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:tx="http://www.springframework.org/schema/tx"
+	
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd 
+	http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.0.xsd
+           http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.0.xsd"
+	default-autowire="byName">
+	
+    
+    <!-- 首页消息发送模板 -->
+    <bean id="remindMap" class="java.util.HashMap">
+        <constructor-arg>
+            <map>
+                <!-- 托进合同审核通过 -->
+                <entry key="purchaseBasePassed" value="${remindtemplate.purchaseBasePassed}" />
+                <!-- 托进合同审核驳回 -->
+                <entry key="purchaseBaseReject" value="${remindtemplate.purchaseBaseReject}" />
+                <!-- 托进合同解约协议审核通过 -->
+                <entry key="purchaseTerminationReview" value="${remindtemplate.purchaseTerminationReview}" />
+                <!-- 托进合同解约协议审核驳回-->
+                <entry key="purchaseTerminationReject" value="${remindtemplate.purchaseTerminationReject}" />
+                <!-- 托出合同审核通过 -->
+                <entry key="reviewPassRentBase" value="${remindtemplate.reviewPassRentBase}" />
+                <!-- 托出合同审核驳回 -->
+                <entry key="reviewPassRenttermination" value="${remindtemplate.reviewPassRenttermination}" />
+                <!-- 托出合同解约协议审核通过 -->
+                <entry key="reviewDismissalRentBase" value="${remindtemplate.reviewDismissalRentBase}" />
+                <!-- 托出合同解约协议审核驳回 -->
+                <entry key="reviewDismissalRenttermination" value="${remindtemplate.reviewDismissalRenttermination}" />
+                <!-- 转租协议审核通过-->
+                <entry key="reviewPassRentTurn" value="${remindtemplate.reviewPassRentTurn}" />
+                <!-- 转租协议审核驳回 -->
+                <entry key="reviewDismissalRentTurn" value="${remindtemplate.reviewDismissalRentTurn}" />
+                <!-- 续租协议审核通过-->
+                <entry key="reviewPassRentContinued" value="${remindtemplate.reviewPassRentContinued}" />
+                <!-- 续租协议审核驳回 -->
+                <entry key="reviewDismissalRentContinued" value="${remindtemplate.reviewDismissalRentContinued}" />
+                <!-- 调房协议审核通过-->
+                <entry key="reviewPassTransfer" value="${remindtemplate.reviewPassTransfer}" />
+                <!-- 调房协议审核驳回 -->
+                <entry key="reviewDismissalTransfer" value="${remindtemplate.reviewDismissalTransfer}" />
+                <!-- 申报审核驳回 -->
+                <entry key="reviewDismissalDeclare" value="${remindtemplate.reviewDismissalDeclare}" />
+                <!-- 分配工程监理-->
+                <entry key="distributionEngineeringSupervision" value="${remindtemplate.distributionEngineeringSupervision}" />
+                <!-- 合同分配-->
+                <entry key="pactDistribution" value="${remindtemplate.pactDistribution}" />
+                <!-- 应付款项审批提醒 -->
+                <entry key="recPayAuditing" value="${remindtemplate.recPayAuditing}" />
+                <!-- 应收款项状态改变提示提醒 -->
+                <entry key="ralRecPayAuditing" value="${remindtemplate.ralRecPayAuditing}" />
+                <!-- 录入合同超过24小时未提交审核 -->
+                <entry key="pactUnsubmitted" value="${remindtemplate.pactUnsubmitted}" />
+                <!-- 合同驳回后超过24小时未重新提交审核 -->
+                <entry key="pactReject" value="${remindtemplate.pactReject}" />
+                <!-- 合同提交审核后超过24小时未审核 -->
+                <entry key="pactUnreview" value="${remindtemplate.pactUnreview}" />
+                <!-- 托进合同审核通过后超过24小时未创建房间 -->
+                <entry key="unCreateRoom" value="${remindtemplate.unCreateRoom}" />
+            </map>
+        </constructor-arg>
+    </bean>
+</beans>

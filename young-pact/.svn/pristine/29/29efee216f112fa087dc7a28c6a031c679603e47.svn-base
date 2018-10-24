@@ -1,0 +1,54 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.young</groupId>
+        <artifactId>young-pact</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+    <artifactId>young-pact-manager</artifactId>
+    <dependencies>
+        <dependency>
+            <groupId>com.young</groupId>
+            <artifactId>young-pact-dao</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        
+        <!-- 数据字典，序列化，权限 接口 -->
+        <dependency>
+            <groupId>com.young</groupId>
+            <artifactId>young-system-api</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <!-- 日志相关 接口 -->
+        <dependency>
+            <groupId>com.young</groupId>
+            <artifactId>young-follow-api</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <!--        序列化 -->
+        <dependency>
+            <groupId>com.young</groupId>
+            <artifactId>young-sso-api</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <!--      房源 -->
+        <dependency>
+            <groupId>com.young</groupId>
+            <artifactId>young-house-api</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <!--    客源 -->
+        <dependency>
+            <groupId>com.young</groupId>
+            <artifactId>young-customer-api</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+        <!--    生产系统 -->
+        <dependency>
+              <groupId>com.young</groupId>
+              <artifactId>young-product-api</artifactId>
+              <version>${project.parent.version}</version>
+        </dependency>
+        
+    </dependencies>
+</project>

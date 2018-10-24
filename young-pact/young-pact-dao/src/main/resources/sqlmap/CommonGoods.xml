@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE sqlMap PUBLIC "-//iBATIS.com//DTD SQL Map 2.0//EN"
+        "http://ibatis.apache.org/dtd/sql-map-2.dtd">
+
+<sqlMap namespace="CommonGoods">
+	<typeAlias alias="commonGoodsDO" type="com.young.pact.domain.commongoods.CommonGoodsDO" />
+	<typeAlias alias="commonGoodsQuery" type="com.young.pact.domain.commongoods.CommonGoodsQuery" />
+	<typeAlias alias="commonGoodsVO" type="com.young.pact.domain.commongoods.GoodsVO" />
+	<typeAlias alias="commonGoodsPicVO" type="com.young.pact.domain.commongoods.CommonGoodsPicVO" />
+	
+	<resultMap class="commonGoodsVO" id="commonGoodsResult" groupBy="id">
+	   <result property="id" column="id"/>
+	   <result property="pactCode" column="pactCode"/>
+	   <result property="pactType" column="pactType"/>
+	   <result property="goodsName" column="goodsName"/>
+	   <result property="unit" column="unit"/>
+	   <result property="number" column="number"/>
+	   <result property="goodsStatus" column="goodsStatus"/>
+	   <result property="remark" column="remark"/>
+	   <result property="commonGoodsPicList" resultMap="CommonGoods.picResult"/>
+	</resultMap>
+	<resultMap class="commonGoodsPicVO" id="picResult" >
+        <result property="id" column="picId"/>
+        <result property="goodsId" column="goodsId"/>
+        <result property="url" column="url"/>
+        <result property="sort" column="sort"/>
+    </resultMap>
+	<sql id="allFields">
+	    id,pact_code,pact_type,goods_name,unit,number,goods_status,remark,ip,gmt_create,gmt_create_name,gmt_modified,gmt_modified_name
+    </sql>
+	<sql id="tableName">
+		pact_common_goods
+	</sql>
+	
+	<!-- 保存抄表信息 -->
+	<insert id="saveCommonGoods" parameterClass="commonGoodsDO">
+	    INSERT INTO
+        <include refid="CommonGoods.tableName" />
+        (pact_code,pact_type,goods_name,unit,number,goods_status,remark,ip,gmt_create,gmt_create_name)
+        values
+        (#pactCode#,#pactType#,#goodsName#,#unit#,#number#,#goodsStatus#,#remark#,#ip#,NOW(),#createName#)
+        <selectKey resultClass="java.lang.Long" keyProperty="id">
+            SELECT LAST_INSERT_ID() AS id
+        </selectKey>
+	</insert>
+	
+	<!-- 根据合同编码删除物品信息及物品图片 -->
+	<delete id="removeCommonGoods" parameterClass="java.lang.String">
+	    DELETE
+		    goods,pic
+		FROM
+		    <include refid="CommonGoods.tableName" /> goods
+		LEFT JOIN pact_common_goods_pic pic ON pic.goods_id = goods.id
+		WHERE
+		    goods.pact_code = #pactCode#
+	</delete>
+	
+	<!-- 根据物品id删除物品信息及物品图片 -->
+	<delete id="delCommonGoods" parameterClass="commonGoodsDO">
+	    DELETE
+		    goods,pic
+		FROM
+		    <include refid="CommonGoods.tableName" /> goods
+		LEFT JOIN pact_common_goods_pic pic ON pic.goods_id = goods.id
+		WHERE
+		    goods.id=#id# and pact_code = #pactCode#
+	</delete>
+	<!-- 物品详情 -->
+	<select id="getGoods" parameterClass="java.lang.Long" resultMap="commonGoodsResult">
+	select
+	    goods.id,
+        goods.pact_code AS pactCode,
+        goods.pact_type AS pactType,
+        goods.goods_name AS goodsName,
+        goods.unit,
+        goods.number,
+        goods.goods_status AS goodsStatus,
+        goods.remark,
+        pic.id AS picId,
+        pic.goods_id AS goodsId,
+        pic.url,
+        pic.sort
+        from 
+         <include refid="CommonGoods.tableName" /> goods
+         left join pact_common_goods_pic pic on goods.id =pic.goods_id
+         where goods.id=#id#
+	</select>
+	<!-- 修改物品信息 -->
+	<update id="updateGoods" parameterClass="commonGoodsDO">
+		update
+			<include refid="CommonGoods.tableName" />
+		set
+			gmt_modified = now(),gmt_modified_name=#modifiedName#
+		<isNotNull prepend="," property="goodsName">
+            goods_name = #goodsName#
+        </isNotNull>
+        <isNotNull prepend="," property="unit">
+            unit = #unit#
+        </isNotNull>
+        <isNotNull prepend="," property="goodsStatus">
+            goods_status = #goodsStatus#
+        </isNotNull>
+        <isNotNull prepend="," property="number">
+            number = #number#
+        </isNotNull>
+        <isNotNull prepend="," property="remark">
+            remark = #remark#
+        </isNotNull>
+        <isNotNull prepend="," property="ip">
+            ip = #ip#
+        </isNotNull>
+        where
+        	id=#id#
+	</update>
+	<!-- 根据合同编码查询物品信息及物品图片 -->
+	<select id="listCommonGoodsByPactCode" parameterClass="java.lang.String" resultMap="commonGoodsResult">
+	    select
+	    goods.id,
+        goods.pact_code AS pactCode,
+        goods.pact_type AS pactType,
+        goods.goods_name AS goodsName,
+        goods.unit,
+        goods.number,
+        goods.goods_status AS goodsStatus,
+        goods.remark,
+        pic.id AS picId,
+        pic.goods_id AS goodsId,
+        pic.url,
+        pic.sort
+        from 
+         <include refid="CommonGoods.tableName" /> goods
+         left join pact_common_goods_pic pic on goods.id =pic.goods_id
+         where goods.pact_code=#pactCode#
+	</select>
+	
+	<!-- 分页查询物品列表 -->
+	<select id="listGoods" parameterClass="commonGoodsQuery" resultClass="commonGoodsVO">
+	    select
+	    goods.id,
+        goods.pact_code AS pactCode,
+        goods.pact_type AS pactType,
+        goods.goods_name AS goodsName,
+        goods.unit,
+        goods.number,
+        goods.goods_status AS goodsStatus,
+        goods.remark
+        from 
+         <include refid="CommonGoods.tableName" /> goods
+         where 
+         	goods.pact_code=#pactCode#
+         ORDER BY 
+         	goods.gmt_create desc
+		LIMIT 
+			#startRow#,#pageSize#
+	</select>
+	
+	<!-- 查询分页数量 -->
+	<select id="countCommonGoodsByPactCode" parameterClass="java.lang.String" resultClass="java.lang.Integer">
+	    select
+	    	count(goods.id)
+        from 
+         <include refid="CommonGoods.tableName" /> goods
+         where goods.pact_code=#pactCode#
+	</select>
+</sqlMap>
